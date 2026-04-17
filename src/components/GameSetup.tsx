@@ -62,7 +62,7 @@ export default function GameSetup({ onStartGame }: Props) {
         {lastSetup && (
           <button
             onClick={handleQuickStart}
-            className="w-full py-3 px-4 rounded-xl border-2 border-red-500/50 bg-red-500/10 text-red-400 font-semibold text-sm flex items-center justify-center gap-2 active:opacity-70"
+            className="w-full py-3 px-4 rounded-xl border-2 border-red-500/50 bg-red-500/10 text-red-500 font-semibold text-sm flex items-center justify-center gap-2 active:opacity-70"
           >
             <span>⚡</span>
             Quick Start — {lastSetup.playerNames.join(', ')} · {lastSetup.holes} holes
@@ -81,7 +81,7 @@ export default function GameSetup({ onStartGame }: Props) {
                 <button
                   key={n}
                   onClick={() => setPlayerCount(n)}
-                  className={`w-11 h-11 rounded-xl font-bold text-sm transition-colors ${
+                  className={`w-12 h-12 rounded-xl font-bold text-sm transition-colors ${
                     playerCount === n
                       ? 'bg-red-500 text-white'
                       : 'bg-[#2a2a2a] text-gray-300 active:bg-[#3a3a3a]'
@@ -101,7 +101,7 @@ export default function GameSetup({ onStartGame }: Props) {
                 <button
                   key={h}
                   onClick={() => setHoles(h)}
-                  className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors ${
+                  className={`flex-1 py-3 rounded-xl font-bold text-sm transition-colors ${
                     holes === h
                       ? 'bg-red-500 text-white'
                       : 'bg-[#2a2a2a] text-gray-300 active:bg-[#3a3a3a]'
@@ -129,11 +129,11 @@ export default function GameSetup({ onStartGame }: Props) {
                     value={name}
                     onChange={(e) => updateName(i, e.target.value)}
                     placeholder={`Player ${i + 1}`}
-                    className={`w-full bg-[#111] text-white px-3 py-2.5 rounded-xl text-sm border ${
-                      errors[i] ? 'border-red-500' : 'border-[#333] focus:border-red-500'
+                    className={`w-full bg-[#111] text-white px-3 py-2.5 rounded-xl text-base border ${
+                      errors[i] ? 'border-red-500 bg-red-500/5' : 'border-[#444] focus:border-red-500'
                     } outline-none transition-colors`}
                   />
-                  {errors[i] && <p className="text-red-500 text-xs mt-1">{errors[i]}</p>}
+                  {errors[i] && <p className="text-red-500 text-sm mt-1">{errors[i]}</p>}
                 </div>
               </div>
             ))}

@@ -7,6 +7,7 @@
   "background_color": "#0f0f0f",
   "theme_color": "#EF4444",
   "orientation": "portrait-primary",
+  "categories": ["games", "sports"],
   "icons": [
     {
       "src": "/favicon.svg",

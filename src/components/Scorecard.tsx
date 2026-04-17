@@ -24,8 +24,14 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
     setDisplayScore(currentPlayer.scores[currentHole]);
   }, [currentHole, currentPlayerIndex, currentPlayer.scores]);
 
-  const increment = () => setDisplayScore((s) => Math.min(s + 1, 999));
-  const decrement = () => setDisplayScore((s) => Math.max(s - 1, 0));
+  const increment = () => {
+    navigator.vibrate?.(8);
+    setDisplayScore((s) => Math.min(s + 1, 999));
+  };
+  const decrement = () => {
+    navigator.vibrate?.(8);
+    setDisplayScore((s) => Math.max(s - 1, 0));
+  };
 
   const handleSetScore = () => {
     setScoreFlash(true);
@@ -93,20 +99,20 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
         <div className="flex items-center justify-between bg-[#1a1a1a] rounded-2xl px-4 py-3">
           <button
             onClick={() => onNavigatePlayer('prev')}
-            className="w-10 h-10 rounded-full bg-[#2a2a2a] text-white text-lg font-bold flex items-center justify-center active:bg-[#3a3a3a]"
+            className="w-12 h-12 rounded-full bg-[#2a2a2a] text-white text-lg font-bold flex items-center justify-center active:bg-[#3a3a3a]"
           >
             ‹
           </button>
           <div className="text-center flex-1 px-2">
             <p className="text-gray-400 text-xs uppercase tracking-widest mb-0.5">Player</p>
             <p className="text-white text-2xl font-bold truncate">{currentPlayer.name}</p>
-            <p className="text-gray-600 text-xs mt-0.5">
+            <p className="text-gray-400 text-xs mt-0.5">
               {currentPlayerIndex + 1} of {players.length}
             </p>
           </div>
           <button
             onClick={() => onNavigatePlayer('next')}
-            className="w-10 h-10 rounded-full bg-[#2a2a2a] text-white text-lg font-bold flex items-center justify-center active:bg-[#3a3a3a]"
+            className="w-12 h-12 rounded-full bg-[#2a2a2a] text-white text-lg font-bold flex items-center justify-center active:bg-[#3a3a3a]"
           >
             ›
           </button>
@@ -128,7 +134,7 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
           <button
             onClick={decrement}
             disabled={displayScore === 0}
-            className="w-20 h-20 rounded-full bg-[#2a2a2a] text-white text-3xl font-bold flex items-center justify-center disabled:opacity-30 active:bg-[#3a3a3a] select-none"
+            className="w-20 h-20 rounded-full bg-[#2a2a2a] text-white text-3xl font-bold flex items-center justify-center disabled:opacity-50 active:bg-[#3a3a3a] select-none"
           >
             −
           </button>
@@ -154,7 +160,7 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       {/* Scoreboard mini-view */}
       <div className="px-6 pb-6">
         <div className="border border-[#2a2a2a] rounded-xl p-3">
-          <p className="text-gray-600 text-xs mb-2 uppercase tracking-widest">Hole {currentHole + 1} Scores</p>
+          <p className="text-gray-400 text-xs mb-2 uppercase tracking-widest">Hole {currentHole + 1} Scores</p>
           <div className="flex gap-3 flex-wrap">
             {players.map((p, i) => (
               <div

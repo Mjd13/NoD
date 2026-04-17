@@ -13,12 +13,12 @@ const tabs: { screen: Screen; label: string; icon: string }[] = [
 
 export default function Navigation({ currentScreen, onNavigate }: Props) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-[#1a1a1a] border-t-2 border-red-500 flex safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#1a1a1a] border-t-2 border-red-500 flex pb-[env(safe-area-inset-bottom)]">
       {tabs.map(({ screen, label, icon }) => (
         <button
           key={screen}
           onClick={() => onNavigate(screen)}
-          className={`flex-1 py-3 flex flex-col items-center gap-1 transition-colors ${
+          className={`flex-1 py-4 flex flex-col items-center gap-1 transition-colors ${
             currentScreen === screen ? 'text-red-500' : 'text-gray-500 active:text-gray-300'
           }`}
         >

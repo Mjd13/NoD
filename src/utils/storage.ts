@@ -1,0 +1,38 @@
+import { Game, GameSetupData } from '../types';
+
+const GAMES_KEY = 'scorecards_games';
+const LAST_SETUP_KEY = 'scorecards_lastSetup';
+
+export function loadGames(): Game[] {
+  try {
+    const data = localStorage.getItem(GAMES_KEY);
+    return data ? (JSON.parse(data) as Game[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveGames(games: Game[]): void {
+  try {
+    localStorage.setItem(GAMES_KEY, JSON.stringify(games));
+  } catch {
+    console.warn('localStorage quota exceeded — could not save games');
+  }
+}
+
+export function loadLastSetup(): GameSetupData | null {
+  try {
+    const data = localStorage.getItem(LAST_SETUP_KEY);
+    return data ? (JSON.parse(data) as GameSetupData) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveLastSetup(setup: GameSetupData): void {
+  try {
+    localStorage.setItem(LAST_SETUP_KEY, JSON.stringify(setup));
+  } catch {
+    // non-critical, ignore
+  }
+}

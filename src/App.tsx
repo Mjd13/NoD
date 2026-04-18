@@ -23,7 +23,7 @@ export default function App() {
   );
   const { activeGame, startGame, setScoreAndAdvance, navigateHole, navigatePlayer, resetGame } = useGameState();
   const { games, addGame, deleteGame } = useHistory();
-  const { uid, displayName, stage, busy, authError, sendCode, verifyCode, saveName, needsOnboarding } = useAuth();
+  const { uid, displayName, stage, codeSent, busy, authError, sendCode, verifyCode, saveName, needsOnboarding } = useAuth();
 
   const handleSplashDone = () => {
     sessionStorage.setItem('splash_seen', '1');
@@ -94,6 +94,7 @@ export default function App() {
       {showOnboarding && (
         <PhoneAuthModal
           stage={stage}
+          codeSent={codeSent}
           busy={busy}
           error={authError}
           onSendCode={sendCode}

@@ -5,6 +5,7 @@ import { AuthStage } from '../hooks/useAuth';
 
 interface Props {
   stage: AuthStage;
+  codeSent: boolean;
   busy: boolean;
   error: string | null;
   onSendCode: (phone: string, verifier: RecaptchaVerifier) => void;
@@ -16,21 +17,13 @@ interface Props {
 function PhoneStep({ busy, error, onSend }: {
   busy: boolean;
   error: string | null;
-  onSend: (phone: string, verifier: RecaptchaVerifier) => void;
+  onSend: (phone: string) => void;
 }) {
   const [phone, setPhone] = useState('');
-  const verifierRef = useRef<RecaptchaVerifier | null>(null);
-
-  useEffect(() => {
-    if (!auth) return;
-    verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
-    return () => { verifierRef.current?.clear(); verifierRef.current = null; };
-  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!verifierRef.current || !phone.trim()) return;
-    onSend(phone.trim(), verifierRef.current);
+    if (phone.trim()) onSend(phone.trim());
   };
 
   return (
@@ -159,12 +152,25 @@ function NameStep({ busy, onSave, phoneNumber }: {
   );
 }
 
-export default function PhoneAuthModal({ stage, busy, error, onSendCode, onVerifyCode, onSaveName, phoneNumber }: Props) {
+export default function PhoneAuthModal({ stage, codeSent, busy, error, onSendCode, onVerifyCode, onSaveName, phoneNumber }: Props) {
   const [localStage, setLocalStage] = useState<'phone' | 'otp' | 'name'>(
     stage === 'no-name' ? 'name' : 'phone'
   );
+  const verifierRef = useRef<RecaptchaVerifier | null>(null);
 
-  // If parent moves to no-name after OTP, advance to name step
+  // Create verifier once at modal level so it survives step transitions
+  useEffect(() => {
+    if (!auth) return;
+    verifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+    return () => { verifierRef.current?.clear(); verifierRef.current = null; };
+  }, []);
+
+  // Advance to OTP only after sendCode resolves successfully
+  useEffect(() => {
+    if (codeSent) setLocalStage('otp');
+  }, [codeSent]);
+
+  // If parent moves to no-name after OTP verify, advance to name step
   useEffect(() => {
     if (stage === 'no-name') setLocalStage('name');
   }, [stage]);
@@ -200,10 +206,8 @@ export default function PhoneAuthModal({ stage, busy, error, onSendCode, onVerif
             <PhoneStep
               busy={busy}
               error={error}
-              onSend={(phone, verifier) => {
-                onSendCode(phone, verifier);
-                // Advance to OTP step immediately; errors surface via `error` prop
-                if (!error) setLocalStage('otp');
+              onSend={(phone) => {
+                if (verifierRef.current) onSendCode(phone, verifierRef.current);
               }}
             />
           )}

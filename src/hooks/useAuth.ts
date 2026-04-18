@@ -18,7 +18,10 @@ function friendlyError(code: string): string {
   if (code === 'auth/code-expired') return 'Code expired. Request a new one.';
   if (code === 'auth/invalid-verification-code') return 'Wrong code. Please check and retry.';
   if (code === 'auth/missing-phone-number') return 'Please enter a phone number.';
-  return 'Something went wrong. Please try again.';
+  if (code === 'auth/session-expired') return 'Session expired. Please go back and request a new code.';
+  if (code === 'auth/invalid-verification-id') return 'Verification failed. Please go back and try again.';
+  if (code === 'auth/network-request-failed') return 'Network error. Check your connection and try again.';
+  return `Something went wrong (${code}). Please try again.`;
 }
 
 export function useAuth() {
@@ -26,6 +29,7 @@ export function useAuth() {
   const [displayName, setDisplayNameState] = useState<string | null>(null);
   const [stage, setStage] = useState<AuthStage>('loading');
   const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null);
+  const [codeSent, setCodeSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
@@ -68,6 +72,7 @@ export function useAuth() {
     try {
       const result = await signInWithPhoneNumber(auth, phone, verifier);
       setConfirmation(result);
+      setCodeSent(true);
     } catch (e: any) {
       setAuthError(friendlyError(e.code));
       // Clear the used verifier so a fresh one can be created on retry
@@ -117,6 +122,7 @@ export function useAuth() {
     uid: user?.uid ?? null,
     displayName,
     stage,
+    codeSent,
     busy,
     authError,
     sendCode,

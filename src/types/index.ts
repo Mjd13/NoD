@@ -1,6 +1,7 @@
 export interface Player {
   name: string;
   scores: number[];
+  uid?: string;
 }
 
 export interface Game {

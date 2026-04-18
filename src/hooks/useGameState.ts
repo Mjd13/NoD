@@ -4,9 +4,9 @@ import { ActiveGame, AdvanceResult } from '../types';
 export function useGameState() {
   const [activeGame, setActiveGame] = useState<ActiveGame | null>(null);
 
-  const startGame = useCallback((playerNames: string[], holes: 9 | 18) => {
+  const startGame = useCallback((players: { name: string; uid?: string }[], holes: 9 | 18) => {
     setActiveGame({
-      players: playerNames.map((name) => ({ name, scores: new Array(holes).fill(0) as number[] })),
+      players: players.map((p) => ({ name: p.name, uid: p.uid, scores: new Array(holes).fill(0) as number[] })),
       holesPlayed: holes,
       currentHole: 0,
       currentPlayerIndex: 0,

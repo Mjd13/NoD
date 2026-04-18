@@ -11,6 +11,8 @@ import GlobalLeaderboard from './components/GlobalLeaderboard';
 import { useGameState } from './hooks/useGameState';
 import { useHistory } from './hooks/useHistory';
 import { useAuth } from './hooks/useAuth';
+import { useInstallPrompt } from './hooks/useInstallPrompt';
+import InstallPrompt from './components/InstallPrompt';
 import { syncGameToFirebase } from './hooks/useGlobalLeaderboard';
 import { Screen } from './types';
 import { generateId } from './utils/uuid';
@@ -24,6 +26,7 @@ export default function App() {
   const { activeGame, startGame, setScoreAndAdvance, navigateHole, navigatePlayer, resetGame } = useGameState();
   const { games, addGame, deleteGame } = useHistory();
   const { uid, displayName, stage, codeSent, busy, authError, sendCode, verifyCode, saveName, needsOnboarding } = useAuth();
+  const { showPrompt: showInstall, canNativeInstall, triggerInstall, dismiss: dismissInstall } = useInstallPrompt();
 
   const handleSplashDone = () => {
     sessionStorage.setItem('splash_seen', '1');
@@ -86,12 +89,19 @@ export default function App() {
   };
 
   const showNav = ['setup', 'history', 'analytics', 'global'].includes(screen);
-  const showOnboarding = !showSplash && stage !== 'loading' && needsOnboarding;
+  const showOnboarding = !showSplash && !showInstall && stage !== 'loading' && needsOnboarding;
 
   return (
     <div className="min-h-screen bg-surface-0 text-ink-primary">
       {showSplash && <SplashScreen onDone={handleSplashDone} />}
-      {showOnboarding && (
+      {!showSplash && showInstall && (
+        <InstallPrompt
+          canNativeInstall={canNativeInstall}
+          onInstall={triggerInstall}
+          onDismiss={dismissInstall}
+        />
+      )}
+      {!showSplash && !showInstall && showOnboarding && (
         <PhoneAuthModal
           stage={stage}
           codeSent={codeSent}

@@ -1,5 +1,5 @@
-import { useGlobalStats } from '../hooks/useGlobalStats';
-import { supabaseEnabled } from '../lib/supabase';
+import { useGlobalLeaderboard } from '../hooks/useGlobalLeaderboard';
+import { firebaseEnabled } from '../lib/firebase';
 
 interface Props {
   displayName: string | null;
@@ -34,9 +34,9 @@ function GlobeIcon() {
 }
 
 export default function GlobalLeaderboard({ displayName }: Props) {
-  const { entries, loading, error, refetch } = useGlobalStats();
+  const { entries, loading, error, refetch } = useGlobalLeaderboard();
 
-  if (!supabaseEnabled) {
+  if (!firebaseEnabled) {
     return (
       <div className="min-h-screen bg-surface-0 pb-24">
         <div className="px-4 pt-12 pb-6">
@@ -50,14 +50,14 @@ export default function GlobalLeaderboard({ displayName }: Props) {
             </div>
             <h2 className="text-ink-primary font-bold text-lg mb-2">Setup Required</h2>
             <p className="text-ink-tertiary text-sm leading-relaxed mb-4">
-              Add your Supabase keys to <span className="text-ink-secondary font-mono text-xs">.env</span> to enable the global leaderboard.
+              Add your Firebase keys to <span className="text-ink-secondary font-mono text-xs">.env</span> to enable the global leaderboard.
             </p>
             <div className="bg-surface-3 rounded-xl p-4 text-left">
               <p className="label-caps text-accent mb-2">3 steps</p>
               <ol className="text-ink-secondary text-sm space-y-2">
-                <li>1. Create a free project at <span className="text-ink-primary font-medium">supabase.com</span></li>
-                <li>2. Run the SQL from <span className="text-ink-primary font-mono text-xs">supabase-schema.sql</span></li>
-                <li>3. Add your URL + anon key to <span className="text-ink-primary font-mono text-xs">.env</span></li>
+                <li>1. Create a project at <span className="text-ink-primary font-medium">console.firebase.google.com</span></li>
+                <li>2. Enable Phone Auth + Firestore</li>
+                <li>3. Add your config to <span className="text-ink-primary font-mono text-xs">.env</span></li>
               </ol>
             </div>
           </div>
@@ -68,7 +68,6 @@ export default function GlobalLeaderboard({ displayName }: Props) {
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24">
-      {/* Header */}
       <div className="px-4 pt-12 pb-6 flex items-start justify-between">
         <div>
           <h1 className="text-4xl font-black text-ink-primary tracking-tight">Global</h1>
@@ -92,7 +91,7 @@ export default function GlobalLeaderboard({ displayName }: Props) {
       <div className="px-4 flex flex-col gap-4">
         {/* Your rank highlight */}
         {displayName && (() => {
-          const me = entries.findIndex(e => e.display_name === displayName);
+          const me = entries.findIndex(e => e.displayName === displayName);
           if (me === -1) return null;
           const entry = entries[me];
           return (
@@ -103,13 +102,13 @@ export default function GlobalLeaderboard({ displayName }: Props) {
                   #{me + 1}
                 </div>
                 <div className="flex-1">
-                  <p className="text-ink-primary font-bold text-base">{entry.display_name}</p>
+                  <p className="text-ink-primary font-bold text-base">{entry.displayName}</p>
                   <p className="text-ink-tertiary text-xs">
-                    {entry.wins} win{entry.wins !== 1 ? 's' : ''} · {entry.games_played} game{entry.games_played !== 1 ? 's' : ''}
+                    {entry.wins} win{entry.wins !== 1 ? 's' : ''} · {entry.gamesPlayed} game{entry.gamesPlayed !== 1 ? 's' : ''}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-ink-primary font-bold tabular-nums">{entry.best_score}</p>
+                  <p className="text-ink-primary font-bold tabular-nums">{entry.bestScore}</p>
                   <p className="text-ink-muted text-xs">best</p>
                 </div>
               </div>
@@ -117,7 +116,6 @@ export default function GlobalLeaderboard({ displayName }: Props) {
           );
         })()}
 
-        {/* Global leaderboard */}
         <div className="card p-4">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1.5 h-4 rounded-full bg-accent" />
@@ -160,16 +158,15 @@ export default function GlobalLeaderboard({ displayName }: Props) {
           {!loading && !error && entries.length > 0 && (
             <div className="flex flex-col">
               {entries.map((entry, i) => {
-                const isMe = entry.display_name === displayName;
+                const isMe = entry.displayName === displayName;
                 const isFirst = i === 0;
                 return (
                   <div
-                    key={`${entry.device_id}-${i}`}
+                    key={`${entry.uid}-${i}`}
                     className={`flex items-center gap-3 py-3 ${
                       i < entries.length - 1 ? 'border-b border-line-subtle' : ''
-                    } ${isMe ? 'opacity-100' : ''}`}
+                    }`}
                   >
-                    {/* Rank */}
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
                       isFirst ? 'bg-accent text-white'
                       : i === 1 ? 'bg-surface-4 text-ink-secondary'
@@ -177,24 +174,20 @@ export default function GlobalLeaderboard({ displayName }: Props) {
                     }`}>
                       {i + 1}
                     </span>
-
-                    {/* Name + sub */}
                     <div className="flex-1 min-w-0">
                       <p className={`font-semibold text-sm truncate ${isMe ? 'text-accent' : 'text-ink-primary'}`}>
-                        {entry.display_name}
+                        {entry.displayName}
                         {isMe && <span className="text-xs text-accent/60 ml-1.5">you</span>}
                       </p>
                       <p className="text-ink-muted text-xs tabular-nums">
-                        {entry.games_played} game{entry.games_played !== 1 ? 's' : ''}
+                        {entry.gamesPlayed} game{entry.gamesPlayed !== 1 ? 's' : ''}
                       </p>
                     </div>
-
-                    {/* Stats */}
                     <div className="text-right shrink-0">
                       <p className={`font-bold text-sm tabular-nums ${isFirst ? 'text-accent' : 'text-ink-primary'}`}>
                         {entry.wins} <span className="text-ink-muted font-normal text-xs">wins</span>
                       </p>
-                      <p className="text-ink-muted text-xs tabular-nums">best {entry.best_score}</p>
+                      <p className="text-ink-muted text-xs tabular-nums">best {entry.bestScore}</p>
                     </div>
                   </div>
                 );
@@ -203,7 +196,6 @@ export default function GlobalLeaderboard({ displayName }: Props) {
           )}
         </div>
 
-        {/* Stats summary cards */}
         {!loading && entries.length > 0 && (
           <div className="grid grid-cols-2 gap-3">
             <div className="card p-4">
@@ -213,7 +205,7 @@ export default function GlobalLeaderboard({ displayName }: Props) {
             <div className="card p-4">
               <p className="text-ink-tertiary text-xs mb-1">Total Games</p>
               <p className="text-ink-primary text-2xl font-bold tabular-nums">
-                {entries.reduce((sum, e) => sum + e.games_played, 0)}
+                {entries.reduce((sum, e) => sum + e.gamesPlayed, 0)}
               </p>
             </div>
           </div>

@@ -6,12 +6,12 @@ import GameHistory from './components/GameHistory';
 import Analytics from './components/Analytics';
 import Navigation from './components/Navigation';
 import SplashScreen from './components/SplashScreen';
-import OnboardingModal from './components/OnboardingModal';
+import PhoneAuthModal from './components/PhoneAuthModal';
 import GlobalLeaderboard from './components/GlobalLeaderboard';
 import { useGameState } from './hooks/useGameState';
 import { useHistory } from './hooks/useHistory';
-import { useProfile } from './hooks/useProfile';
-import { syncGameToSupabase } from './hooks/useGlobalStats';
+import { useAuth } from './hooks/useAuth';
+import { syncGameToFirebase } from './hooks/useGlobalLeaderboard';
 import { Screen } from './types';
 import { generateId } from './utils/uuid';
 import { getTotal, getWinnerName } from './utils/calculations';
@@ -23,7 +23,7 @@ export default function App() {
   );
   const { activeGame, startGame, setScoreAndAdvance, navigateHole, navigatePlayer, resetGame } = useGameState();
   const { games, addGame, deleteGame } = useHistory();
-  const { displayName, deviceId, setDisplayName, needsOnboarding } = useProfile();
+  const { uid, displayName, stage, busy, authError, sendCode, verifyCode, saveName, needsOnboarding } = useAuth();
 
   const handleSplashDone = () => {
     sessionStorage.setItem('splash_seen', '1');
@@ -53,10 +53,8 @@ export default function App() {
       completed: true,
     });
 
-    // Sync to global leaderboard if the device owner is one of the players
-    if (displayName) {
+    if (uid && displayName) {
       const winnerName = getWinnerName({ ...activeGame, id, date: Date.now(), completed: true });
-      // Find the device owner's score (match by display name, case-insensitive)
       const ownerPlayer = activeGame.players.find(
         (p) => p.name.toLowerCase() === displayName.toLowerCase()
       );
@@ -67,13 +65,13 @@ export default function App() {
           ).scores);
       const won = winnerName.toLowerCase() === displayName.toLowerCase();
 
-      syncGameToSupabase({
+      syncGameToFirebase({
         id,
-        device_id: deviceId,
-        display_name: displayName,
-        holes_played: activeGame.holesPlayed,
-        player_count: activeGame.players.length,
-        total_score: totalScore,
+        uid,
+        displayName,
+        holesPlayed: activeGame.holesPlayed,
+        playerCount: activeGame.players.length,
+        totalScore,
         won,
       });
     }
@@ -88,12 +86,21 @@ export default function App() {
   };
 
   const showNav = ['setup', 'history', 'analytics', 'global'].includes(screen);
-  const showOnboarding = !showSplash && needsOnboarding;
+  const showOnboarding = !showSplash && stage !== 'loading' && needsOnboarding;
 
   return (
     <div className="min-h-screen bg-surface-0 text-ink-primary">
       {showSplash && <SplashScreen onDone={handleSplashDone} />}
-      {showOnboarding && <OnboardingModal onDone={setDisplayName} />}
+      {showOnboarding && (
+        <PhoneAuthModal
+          stage={stage}
+          busy={busy}
+          error={authError}
+          onSendCode={sendCode}
+          onVerifyCode={verifyCode}
+          onSaveName={saveName}
+        />
+      )}
 
       <div key={screen} className="screen-enter">
         {screen === 'setup' && <GameSetup onStartGame={handleStartGame} />}

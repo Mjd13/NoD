@@ -32,10 +32,21 @@ function StatsIcon() {
   );
 }
 
+function GlobeIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="w-full h-full">
+      <circle cx="10" cy="10" r="7.5" />
+      <path d="M10 2.5c-2 2-3 4.5-3 7.5s1 5.5 3 7.5M10 2.5c2 2 3 4.5 3 7.5s-1 5.5-3 7.5" />
+      <line x1="2.5" y1="10" x2="17.5" y2="10" />
+    </svg>
+  );
+}
+
 const tabs: { screen: Screen; label: string; icon: React.ReactNode }[] = [
   { screen: 'setup',     label: 'Home',    icon: <HomeIcon /> },
   { screen: 'history',   label: 'History', icon: <HistoryIcon /> },
   { screen: 'analytics', label: 'Stats',   icon: <StatsIcon /> },
+  { screen: 'global',    label: 'Global',  icon: <GlobeIcon /> },
 ];
 
 export default function Navigation({ currentScreen, onNavigate }: Props) {

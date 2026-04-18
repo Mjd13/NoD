@@ -35,6 +35,6 @@ export interface Achievement {
   value: string;
 }
 
-export type Screen = 'setup' | 'scorecard' | 'summary' | 'history' | 'analytics';
+export type Screen = 'setup' | 'scorecard' | 'summary' | 'history' | 'analytics' | 'global';
 
 export type AdvanceResult = 'nextPlayer' | 'nextHole' | 'complete';

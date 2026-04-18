@@ -2,6 +2,8 @@ import { Game, GameSetupData } from '../types';
 
 const GAMES_KEY = 'scorecards_games';
 const LAST_SETUP_KEY = 'scorecards_lastSetup';
+const DEVICE_ID_KEY = 'scorecards_device_id';
+const DISPLAY_NAME_KEY = 'scorecards_display_name';
 
 export function loadGames(): Game[] {
   try {
@@ -35,4 +37,21 @@ export function saveLastSetup(setup: GameSetupData): void {
   } catch {
     // non-critical, ignore
   }
+}
+
+export function getOrCreateDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
+export function loadDisplayName(): string | null {
+  return localStorage.getItem(DISPLAY_NAME_KEY);
+}
+
+export function saveDisplayName(name: string): void {
+  localStorage.setItem(DISPLAY_NAME_KEY, name);
 }

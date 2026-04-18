@@ -25,22 +25,31 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
 
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Refs for latest values (used inside event listeners / intervals)
+  // Always-current refs — safe inside event handlers without stale-closure issues
   const displayScoreRef = useRef(displayScore);
   const isEditingRef = useRef(false);
+  const inputValueRef = useRef(inputValue);
   displayScoreRef.current = displayScore;
   isEditingRef.current = isEditing;
+  inputValueRef.current = inputValue;
 
-  // Touch tracking
+  // Touch tracking refs
   const scoreTouchRef = useRef<{ y: number; x: number } | null>(null);
   const swipeOccurredRef = useRef(false);
   const playerTouchRef = useRef<{ x: number; y: number } | null>(null);
+  const holeTouchRef = useRef<{ x: number; y: number } | null>(null);
 
-  // Hold-to-repeat tracking
+  // Hold-to-repeat
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdFiredRef = useRef(false);
 
-  // Sync display score when hole or player changes
+  // Fix 7: Lock body scroll — prevents Safari page bounce during gameplay
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, []);
+
+  // Sync display when hole or player changes
   useEffect(() => {
     const s = currentPlayer.scores[currentHole];
     setDisplayScore(s);
@@ -48,32 +57,19 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
     setIsEditing(false);
   }, [currentHole, currentPlayerIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keyboard shortcuts: arrows change score, Enter = Set Score (unless editing)
+  // Keyboard shortcuts (not active while typing)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      const tag = (document.activeElement as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-
+      if (isEditingRef.current) return; // input handles its own keys
       switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault();
-          applyDelta(1);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          applyDelta(-1);
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          onNavigatePlayer('prev');
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          onNavigatePlayer('next');
-          break;
+        case 'ArrowUp':   e.preventDefault(); applyDelta(1);             break;
+        case 'ArrowDown': e.preventDefault(); applyDelta(-1);            break;
+        case 'ArrowLeft': e.preventDefault(); onNavigatePlayer('prev');  break;
+        case 'ArrowRight':e.preventDefault(); onNavigatePlayer('next');  break;
         case 'Enter':
           e.preventDefault();
-          commitScore(displayScoreRef.current);
+          flash();
+          onSetScore(displayScoreRef.current);
           break;
       }
     };
@@ -85,39 +81,48 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
 
   const applyDelta = (delta: number) => {
     navigator.vibrate?.(8);
-    setDisplayScore((s) => {
+    setDisplayScore(s => {
       const next = s + delta;
       setInputValue(String(next));
       displayScoreRef.current = next;
+      inputValueRef.current = String(next);
       return next;
     });
   };
 
-  const commitScore = (score: number) => {
+  // Fix 5: flip the sign of the current score (iOS numpad has no minus key)
+  const flipSign = () => {
+    const flipped = -displayScoreRef.current;
+    setDisplayScore(flipped);
+    setInputValue(String(flipped));
+    displayScoreRef.current = flipped;
+    inputValueRef.current = String(flipped);
+  };
+
+  const flash = () => {
     navigator.vibrate?.(15);
     setScoreFlash(true);
     setTimeout(() => setScoreFlash(false), 300);
+  };
+
+  // Fix 9: fully synchronous Set Score — no rAF race
+  const handleSetScore = () => {
+    let score = displayScoreRef.current;
+    if (isEditingRef.current) {
+      const parsed = parseInt(inputValueRef.current, 10);
+      if (!isNaN(parsed)) score = parsed;
+      // Finalise state synchronously before advancing
+      displayScoreRef.current = score;
+      setDisplayScore(score);
+      setInputValue(String(score));
+      setIsEditing(false);
+      inputRef.current?.blur();
+    }
+    flash();
     onSetScore(score);
   };
 
-  const handleSetScore = () => {
-    if (isEditingRef.current) {
-      // Finalize the input value first
-      const parsed = parseInt(inputValue, 10);
-      const final = isNaN(parsed) ? 0 : parsed;
-      setDisplayScore(final);
-      setInputValue(String(final));
-      setIsEditing(false);
-      displayScoreRef.current = final;
-      inputRef.current?.blur();
-      // Wait one frame for blur/state to settle before advancing
-      requestAnimationFrame(() => commitScore(final));
-      return;
-    }
-    commitScore(displayScore);
-  };
-
-  // --- Hold-to-repeat on +/- ---
+  // --- Hold-to-repeat on +/− ---
 
   const startHold = (delta: number) => {
     holdFiredRef.current = false;
@@ -128,7 +133,6 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
         schedule(Math.max(60, delay - 20));
       }, delay);
     };
-    // Initial delay before first repeat
     holdTimerRef.current = setTimeout(() => {
       holdFiredRef.current = true;
       applyDelta(delta);
@@ -144,14 +148,12 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
   };
 
   const handleButtonClick = (delta: number) => {
-    if (holdFiredRef.current) {
-      holdFiredRef.current = false;
-      return; // hold already fired, skip the click's single-fire
-    }
+    if (holdFiredRef.current) { holdFiredRef.current = false; return; }
     applyDelta(delta);
   };
 
-  // --- Score circle: tap to type, swipe ↕ to adjust ---
+  // --- Fix 2: Score circle — tap = keyboard, swipe ↕ = score change ---
+  // touch-action: none on the circle div prevents browser scroll from consuming these events
 
   const handleScoreTouchStart = (e: React.TouchEvent) => {
     scoreTouchRef.current = { y: e.touches[0].clientY, x: e.touches[0].clientX };
@@ -163,30 +165,25 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
     const dy = scoreTouchRef.current.y - e.changedTouches[0].clientY;
     const dx = Math.abs(scoreTouchRef.current.x - e.changedTouches[0].clientX);
     scoreTouchRef.current = null;
-
-    // Vertical swipe: more Y movement than X, and threshold met
-    if (Math.abs(dy) > 28 && Math.abs(dy) > dx) {
+    // Fix 6: 40px threshold (standardised, was 28px)
+    if (Math.abs(dy) > 40 && Math.abs(dy) > dx) {
       swipeOccurredRef.current = true;
       applyDelta(dy > 0 ? 1 : -1);
     }
   };
 
+  // Fix 1: synchronous focus — input is always in DOM; no setTimeout needed
   const handleScoreCircleClick = () => {
-    if (swipeOccurredRef.current) {
-      swipeOccurredRef.current = false;
-      return; // don't open keyboard after a swipe
-    }
-    if (isEditing) return;
+    if (swipeOccurredRef.current) { swipeOccurredRef.current = false; return; }
     setIsEditing(true);
-    setTimeout(() => {
-      inputRef.current?.focus();
-      inputRef.current?.select();
-    }, 30);
+    inputRef.current?.focus();  // synchronous — iOS requires this inside a user gesture
+    inputRef.current?.select();
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     setInputValue(raw);
+    inputValueRef.current = raw;
     const parsed = parseInt(raw, 10);
     if (!isNaN(parsed)) {
       setDisplayScore(parsed);
@@ -195,48 +192,76 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
   };
 
   const handleInputBlur = () => {
-    const parsed = parseInt(inputValue, 10);
+    const parsed = parseInt(inputValueRef.current, 10);
     const final = isNaN(parsed) ? 0 : parsed;
     setDisplayScore(final);
     setInputValue(String(final));
     displayScoreRef.current = final;
+    inputValueRef.current = String(final);
     setIsEditing(false);
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      inputRef.current?.blur(); // triggers handleInputBlur which finalizes value
+      // Finalise then advance — use captured value to avoid async state read
+      const parsed = parseInt(inputValueRef.current, 10);
+      const final = isNaN(parsed) ? displayScoreRef.current : parsed;
+      displayScoreRef.current = final;
+      setDisplayScore(final);
+      setInputValue(String(final));
+      setIsEditing(false);
+      inputRef.current?.blur();
+      // rAF only for the advance, not for value capture
+      requestAnimationFrame(() => { flash(); onSetScore(final); });
     }
   };
 
-  // --- Player nav: swipe ‹ / › ---
+  // --- Fix 3/4: Player nav swipe ←/→ with pan-y touch-action ---
 
   const handlePlayerTouchStart = (e: React.TouchEvent) => {
     playerTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
   };
-
   const handlePlayerTouchEnd = (e: React.TouchEvent) => {
     if (!playerTouchRef.current) return;
     const dx = playerTouchRef.current.x - e.changedTouches[0].clientX;
     const dy = Math.abs(playerTouchRef.current.y - e.changedTouches[0].clientY);
     playerTouchRef.current = null;
-    if (Math.abs(dx) > 40 && Math.abs(dx) > dy) {
+    if (Math.abs(dx) > 40 && Math.abs(dx) > dy)
       onNavigatePlayer(dx > 0 ? 'next' : 'prev');
-    }
   };
 
+  // --- Fix 4: Hole nav swipe ←/→ with pan-y touch-action ---
+
+  const handleHoleTouchStart = (e: React.TouchEvent) => {
+    holeTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const handleHoleTouchEnd = (e: React.TouchEvent) => {
+    if (!holeTouchRef.current) return;
+    const dx = holeTouchRef.current.x - e.changedTouches[0].clientX;
+    const dy = Math.abs(holeTouchRef.current.y - e.changedTouches[0].clientY);
+    holeTouchRef.current = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > dy)
+      onNavigateHole(dx > 0 ? 'next' : 'prev');
+  };
+
+  const absScore = Math.abs(displayScore);
+  const scoreDigits = absScore >= 100 ? 'text-5xl' : 'text-6xl';
+  // Show '-' glyph as user types the minus before any digit
+  const visibleScore = isEditing && inputValue === '-' ? '−' : String(displayScore);
   const progress = ((currentHole + 1) / holesPlayed) * 100;
-  const scoreDigits = Math.abs(displayScore) >= 100 ? 'text-5xl' : 'text-6xl';
-  const inputSize = Math.abs(displayScore) >= 100 ? '2.8rem' : '3.5rem';
 
   return (
-    <div className="min-h-screen bg-[#0f0f0f] flex flex-col">
+    // Fix 8: overscrollBehavior none; h-screen + overflow-auto lets landscape scroll inside viewport
+    <div
+      className="h-screen bg-[#0f0f0f] flex flex-col"
+      style={{ overflowY: 'auto', overscrollBehavior: 'none' }}
+    >
       {/* Header */}
-      <div className="px-6 pt-10 pb-4 flex items-center justify-between">
+      <div className="px-6 pt-10 pb-4 flex items-center justify-between shrink-0">
         <button
           onClick={() => setShowConfirm(true)}
-          className="text-blue-400 text-sm font-medium active:opacity-60"
+          className="text-blue-400 text-sm font-medium active:opacity-60 touch-manipulation"
         >
           ← Back
         </button>
@@ -245,7 +270,7 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
         </p>
         <button
           onClick={() => setShowScoreboard(true)}
-          className="flex items-center gap-1.5 text-gray-400 active:opacity-60 py-1 px-2 rounded-lg active:bg-[#2a2a2a]"
+          className="flex items-center gap-1.5 text-gray-400 py-1 px-2 rounded-lg active:bg-[#2a2a2a] touch-manipulation"
         >
           <span className="text-sm">📊</span>
           <span className="text-xs font-medium">Board</span>
@@ -253,15 +278,20 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 bg-[#1a1a1a] mx-6 rounded-full overflow-hidden">
+      <div className="h-1 bg-[#1a1a1a] mx-6 rounded-full overflow-hidden shrink-0">
         <div
           className="h-full bg-red-500 rounded-full transition-all duration-500"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* Hole Navigation */}
-      <div className="px-6 pt-5 pb-2">
+      {/* Fix 4: Hole Navigation — swipe ←/→; pan-y lets vertical scroll pass through */}
+      <div
+        className="px-6 pt-5 pb-2 shrink-0"
+        style={{ touchAction: 'pan-y' }}
+        onTouchStart={handleHoleTouchStart}
+        onTouchEnd={handleHoleTouchEnd}
+      >
         <div className="flex items-center justify-between">
           <button
             onClick={() => onNavigateHole('prev')}
@@ -287,9 +317,10 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
         </div>
       </div>
 
-      {/* Player Navigation — swipe left/right to switch players */}
+      {/* Fix 3: Player Navigation — swipe ←/→; pan-y prevents vertical page scroll */}
       <div
-        className="px-6 py-2"
+        className="px-6 py-2 shrink-0"
+        style={{ touchAction: 'pan-y' }}
         onTouchStart={handlePlayerTouchStart}
         onTouchEnd={handlePlayerTouchEnd}
       >
@@ -318,45 +349,79 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
         </div>
       </div>
 
-      {/* Score Display — tap to type, swipe ↕ to adjust */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
+      {/* Score section */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 gap-5">
+
+        {/* Fix 1+2: Score circle — always-in-DOM hidden input + touch-action:none */}
         <div
-          className={`w-44 h-44 rounded-full border-4 flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
+          className={`w-44 h-44 rounded-full border-4 relative flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
             scoreFlash
               ? 'border-green-500 bg-green-500/10 scale-105'
               : isEditing
               ? 'border-blue-400 bg-blue-500/10'
               : 'border-red-500 bg-[#1a1a1a]'
           }`}
+          style={{ touchAction: 'none' }}   // Fix 2: browser can't scroll from here
           onTouchStart={handleScoreTouchStart}
           onTouchEnd={handleScoreTouchEnd}
           onClick={handleScoreCircleClick}
         >
+          {/*
+            Fix 1: input always mounted so iOS can focus() synchronously.
+            Fix 10: autocorrect/autocapitalize off — prevents suggestions bar.
+            font-size ≥16px — prevents iOS zoom on focus.
+            opacity:0 + pointerEvents:none — invisible but focusable.
+          */}
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            value={inputValue}
+            onChange={handleInputChange}
+            onBlur={handleInputBlur}
+            onKeyDown={handleInputKeyDown}
+            style={{
+              position: 'absolute',
+              opacity: 0,
+              pointerEvents: 'none',
+              width: 1,
+              height: 1,
+              fontSize: 16,
+            }}
+          />
+
+          {/* Fix 12: colour changes — white → blue while editing, green on flash */}
+          <span
+            className={`font-bold tabular-nums select-none ${scoreDigits} ${
+              scoreFlash ? 'text-green-400' : isEditing ? 'text-blue-400' : 'text-white'
+            }`}
+          >
+            {visibleScore}
+          </span>
+        </div>
+
+        {/* Fix 5/12: +/− sign-flip shown while editing; hint text otherwise */}
+        <div className="flex items-center justify-center h-8">
           {isEditing ? (
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="numeric"
-              pattern="-?[0-9]*"
-              value={inputValue}
-              onChange={handleInputChange}
-              onBlur={handleInputBlur}
-              onKeyDown={handleInputKeyDown}
-              className="text-white font-bold bg-transparent text-center outline-none w-32 tabular-nums"
-              style={{ fontSize: inputSize }}
-            />
+            <button
+              // onPointerDown + preventDefault keeps input focused (no blur on tap)
+              onPointerDown={(e) => { e.preventDefault(); flipSign(); }}
+              className="px-5 py-1.5 rounded-full bg-[#2a2a2a] text-gray-200 text-sm font-semibold active:bg-[#3a3a3a] touch-manipulation"
+            >
+              +/− flip sign
+            </button>
           ) : (
-            <span className={`text-white font-bold tabular-nums ${scoreDigits}`}>
-              {displayScore}
-            </span>
+            <p className="text-gray-700 text-xs select-none">
+              tap · swipe ↕ · hold +/−
+            </p>
           )}
         </div>
 
-        <p className="text-gray-700 text-xs -mt-2 select-none">
-          tap to type · swipe ↕ · hold +/− to fast-change
-        </p>
-
-        {/* +/- Buttons with hold-to-repeat */}
+        {/* +/− Buttons with hold-to-repeat */}
         <div className="flex gap-6">
           <button
             onPointerDown={() => startHold(-1)}
@@ -381,8 +446,8 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
         </div>
       </div>
 
-      {/* Set Score Button */}
-      <div className="px-6 pb-4">
+      {/* Set Score */}
+      <div className="px-6 pb-4 shrink-0">
         <button
           onClick={handleSetScore}
           className="w-full py-5 bg-red-500 text-white font-bold text-xl rounded-2xl active:bg-red-600 transition-colors select-none touch-manipulation"
@@ -391,8 +456,8 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
         </button>
       </div>
 
-      {/* Mini scoreboard — current hole snapshot */}
-      <div className="px-6 pb-6">
+      {/* Mini hole snapshot */}
+      <div className="px-6 pb-6 shrink-0">
         <div className="border border-[#2a2a2a] rounded-xl p-3">
           <p className="text-gray-400 text-xs mb-2 uppercase tracking-widest">Hole {currentHole + 1}</p>
           <div className="flex gap-2 flex-wrap">

@@ -14,40 +14,56 @@ interface Props {
   phoneNumber?: string;
 }
 
+function formatDisplay(digits: string): string {
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`;
+}
+
 function PhoneStep({ busy, error, onSend }: {
   busy: boolean;
   error: string | null;
   onSend: (phone: string) => void;
 }) {
-  const [phone, setPhone] = useState('');
+  const [digits, setDigits] = useState('');
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setDigits(raw);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone.trim()) onSend(phone.trim());
+    if (digits.length === 10) onSend(`+1${digits}`);
   };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div>
         <label className="label-caps text-ink-tertiary mb-2 block">Phone Number</label>
-        <input
-          type="tel"
-          value={phone}
-          onChange={e => setPhone(e.target.value)}
-          placeholder="+1 555 000 0000"
-          className="w-full bg-surface-3 border border-line-default rounded-xl px-4 py-3.5
-                     text-ink-primary text-base placeholder:text-ink-muted
-                     focus:outline-none focus:border-accent transition-colors"
-          autoFocus
-          disabled={busy}
-        />
-        <p className="text-ink-muted text-xs mt-2">International format required: +1 for US/Canada</p>
+        <div className="flex items-center bg-surface-3 border border-line-default rounded-xl overflow-hidden focus-within:border-accent transition-colors">
+          <span className="px-4 py-3.5 text-ink-secondary font-medium text-base border-r border-line-default shrink-0">
+            +1
+          </span>
+          <input
+            type="tel"
+            inputMode="numeric"
+            value={formatDisplay(digits)}
+            onChange={handleChange}
+            placeholder="(555) 000-0000"
+            className="flex-1 bg-transparent px-4 py-3.5 text-ink-primary text-base
+                       placeholder:text-ink-muted focus:outline-none"
+            autoFocus
+            disabled={busy}
+          />
+        </div>
+        <p className="text-ink-muted text-xs mt-2">US &amp; Canada numbers only</p>
       </div>
       {error && <p className="text-red-400 text-sm">{error}</p>}
       <div id="recaptcha-container" />
       <button
         type="submit"
-        disabled={busy || !phone.trim()}
+        disabled={busy || digits.length !== 10}
         className="btn-shimmer w-full py-4 rounded-xl font-bold text-base disabled:opacity-40"
       >
         {busy ? 'Sending…' : 'Send Code'}

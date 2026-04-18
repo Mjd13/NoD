@@ -12,6 +12,16 @@ interface Props {
   onBack: () => void;
 }
 
+function BarChartIcon() {
+  return (
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+      <rect x="1.5" y="8.5" width="3" height="5.5" rx="0.5" />
+      <rect x="6.5" y="5" width="3" height="9" rx="0.5" />
+      <rect x="11.5" y="2" width="3" height="12" rx="0.5" />
+    </svg>
+  );
+}
+
 export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigatePlayer, onBack }: Props) {
   const { players, holesPlayed, currentHole, currentPlayerIndex } = game;
   const currentPlayer = players[currentPlayerIndex];
@@ -22,6 +32,10 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
   const [showConfirm, setShowConfirm] = useState(false);
   const [showScoreboard, setShowScoreboard] = useState(false);
   const [scoreFlash, setScoreFlash] = useState(false);
+
+  // Player slide animation state — purely visual, no logic
+  const [playerDir, setPlayerDir] = useState<'left' | 'right' | null>(null);
+  const [playerKey, setPlayerKey] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,7 +57,7 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdFiredRef = useRef(false);
 
-  // Fix 7: Lock body scroll — prevents Safari page bounce during gameplay
+  // Lock body scroll — prevents Safari page bounce during gameplay
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
@@ -60,12 +74,12 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
   // Keyboard shortcuts (not active while typing)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (isEditingRef.current) return; // input handles its own keys
+      if (isEditingRef.current) return;
       switch (e.key) {
-        case 'ArrowUp':   e.preventDefault(); applyDelta(1);             break;
-        case 'ArrowDown': e.preventDefault(); applyDelta(-1);            break;
-        case 'ArrowLeft': e.preventDefault(); onNavigatePlayer('prev');  break;
-        case 'ArrowRight':e.preventDefault(); onNavigatePlayer('next');  break;
+        case 'ArrowUp':    e.preventDefault(); applyDelta(1);            break;
+        case 'ArrowDown':  e.preventDefault(); applyDelta(-1);           break;
+        case 'ArrowLeft':  e.preventDefault(); navigatePlayer('prev');   break;
+        case 'ArrowRight': e.preventDefault(); navigatePlayer('next');   break;
         case 'Enter':
           e.preventDefault();
           flash();
@@ -90,7 +104,6 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
     });
   };
 
-  // Fix 5: flip the sign of the current score (iOS numpad has no minus key)
   const flipSign = () => {
     const flipped = -displayScoreRef.current;
     setDisplayScore(flipped);
@@ -105,13 +118,11 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
     setTimeout(() => setScoreFlash(false), 300);
   };
 
-  // Fix 9: fully synchronous Set Score — no rAF race
   const handleSetScore = () => {
     let score = displayScoreRef.current;
     if (isEditingRef.current) {
       const parsed = parseInt(inputValueRef.current, 10);
       if (!isNaN(parsed)) score = parsed;
-      // Finalise state synchronously before advancing
       displayScoreRef.current = score;
       setDisplayScore(score);
       setInputValue(String(score));
@@ -152,8 +163,7 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
     applyDelta(delta);
   };
 
-  // --- Fix 2: Score circle — tap = keyboard, swipe ↕ = score change ---
-  // touch-action: none on the circle div prevents browser scroll from consuming these events
+  // --- Score circle — tap = keyboard, swipe ↕ = score change ---
 
   const handleScoreTouchStart = (e: React.TouchEvent) => {
     scoreTouchRef.current = { y: e.touches[0].clientY, x: e.touches[0].clientX };
@@ -165,18 +175,17 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
     const dy = scoreTouchRef.current.y - e.changedTouches[0].clientY;
     const dx = Math.abs(scoreTouchRef.current.x - e.changedTouches[0].clientX);
     scoreTouchRef.current = null;
-    // Fix 6: 40px threshold (standardised, was 28px)
     if (Math.abs(dy) > 40 && Math.abs(dy) > dx) {
       swipeOccurredRef.current = true;
       applyDelta(dy > 0 ? 1 : -1);
     }
   };
 
-  // Fix 1: synchronous focus — input is always in DOM; no setTimeout needed
+  // Synchronous focus — input is always in DOM; no setTimeout needed
   const handleScoreCircleClick = () => {
     if (swipeOccurredRef.current) { swipeOccurredRef.current = false; return; }
     setIsEditing(true);
-    inputRef.current?.focus();  // synchronous — iOS requires this inside a user gesture
+    inputRef.current?.focus();
     inputRef.current?.select();
   };
 
@@ -204,7 +213,6 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      // Finalise then advance — use captured value to avoid async state read
       const parsed = parseInt(inputValueRef.current, 10);
       const final = isNaN(parsed) ? displayScoreRef.current : parsed;
       displayScoreRef.current = final;
@@ -212,12 +220,17 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       setInputValue(String(final));
       setIsEditing(false);
       inputRef.current?.blur();
-      // rAF only for the advance, not for value capture
       requestAnimationFrame(() => { flash(); onSetScore(final); });
     }
   };
 
-  // --- Fix 3/4: Player nav swipe ←/→ with pan-y touch-action ---
+  // --- Player nav swipe ←/→ with slide animation ---
+
+  const navigatePlayer = (dir: 'prev' | 'next') => {
+    setPlayerDir(dir === 'next' ? 'left' : 'right');
+    setPlayerKey(k => k + 1);
+    onNavigatePlayer(dir);
+  };
 
   const handlePlayerTouchStart = (e: React.TouchEvent) => {
     playerTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -228,10 +241,10 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
     const dy = Math.abs(playerTouchRef.current.y - e.changedTouches[0].clientY);
     playerTouchRef.current = null;
     if (Math.abs(dx) > 40 && Math.abs(dx) > dy)
-      onNavigatePlayer(dx > 0 ? 'next' : 'prev');
+      navigatePlayer(dx > 0 ? 'next' : 'prev');
   };
 
-  // --- Fix 4: Hole nav swipe ←/→ with pan-y touch-action ---
+  // --- Hole nav swipe ←/→ ---
 
   const handleHoleTouchStart = (e: React.TouchEvent) => {
     holeTouchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -247,47 +260,46 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
 
   const absScore = Math.abs(displayScore);
   const scoreDigits = absScore >= 100 ? 'text-5xl' : 'text-6xl';
-  // Show '-' glyph as user types the minus before any digit
   const visibleScore = isEditing && inputValue === '-' ? '−' : String(displayScore);
   const progress = ((currentHole + 1) / holesPlayed) * 100;
 
   return (
-    // Fix 8: overscrollBehavior none; h-screen + overflow-auto lets landscape scroll inside viewport
     <div
-      className="h-screen bg-[#0f0f0f] flex flex-col"
+      className="h-screen bg-surface-0 flex flex-col"
       style={{ overflowY: 'auto', overscrollBehavior: 'none' }}
     >
       {/* Header */}
-      <div className="px-6 pt-10 pb-4 flex items-center justify-between shrink-0">
+      <div className="px-4 pt-10 pb-4 flex items-center justify-between shrink-0">
         <button
           onClick={() => setShowConfirm(true)}
-          className="text-blue-400 text-sm font-medium active:opacity-60 touch-manipulation"
+          className="text-ink-secondary text-sm font-medium active:opacity-60 touch-manipulation"
         >
           ← Back
         </button>
-        <p className="text-gray-400 text-xs uppercase tracking-widest">
-          Score<span className="text-red-500">CARDs</span>
+        <p className="label-caps">
+          Score<span className="text-accent">CARDS</span>
         </p>
         <button
           onClick={() => setShowScoreboard(true)}
-          className="flex items-center gap-1.5 text-gray-400 py-1 px-2 rounded-lg active:bg-[#2a2a2a] touch-manipulation"
+          className="flex items-center gap-1.5 text-ink-secondary py-1.5 px-2.5 rounded-lg
+                     bg-surface-3 border border-line-default active:bg-surface-4 touch-manipulation"
         >
-          <span className="text-sm">📊</span>
+          <BarChartIcon />
           <span className="text-xs font-medium">Board</span>
         </button>
       </div>
 
       {/* Progress bar */}
-      <div className="h-1 bg-[#1a1a1a] mx-6 rounded-full overflow-hidden shrink-0">
+      <div className="h-0.5 bg-surface-2 mx-4 rounded-full overflow-hidden shrink-0">
         <div
-          className="h-full bg-red-500 rounded-full transition-all duration-500"
+          className="h-full bg-accent rounded-full transition-all duration-500"
           style={{ width: `${progress}%` }}
         />
       </div>
 
-      {/* Fix 4: Hole Navigation — swipe ←/→; pan-y lets vertical scroll pass through */}
+      {/* Hole Navigation */}
       <div
-        className="px-6 pt-5 pb-2 shrink-0"
+        className="px-4 pt-5 pb-2 shrink-0"
         style={{ touchAction: 'pan-y' }}
         onTouchStart={handleHoleTouchStart}
         onTouchEnd={handleHoleTouchEnd}
@@ -296,53 +308,62 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
           <button
             onClick={() => onNavigateHole('prev')}
             disabled={currentHole === 0}
-            className="w-14 h-14 rounded-full bg-[#1a1a1a] text-white text-xl font-bold flex items-center justify-center disabled:opacity-40 active:bg-[#2a2a2a] touch-manipulation"
+            className="w-14 h-14 rounded-xl bg-surface-2 border border-line-default text-ink-primary text-xl font-bold
+                       flex items-center justify-center disabled:opacity-30 active:bg-surface-3 touch-manipulation"
           >
             ‹
           </button>
           <div className="text-center">
-            <p className="text-gray-400 text-xs uppercase tracking-widest mb-0.5">Hole</p>
-            <p className="text-white text-3xl font-bold tabular-nums">
+            <p className="label-caps mb-0.5">Hole</p>
+            <p className="text-ink-primary text-3xl font-bold tabular-nums">
               {currentHole + 1}
-              <span className="text-gray-600 text-xl">/{holesPlayed}</span>
+              <span className="text-ink-muted text-xl">/{holesPlayed}</span>
             </p>
           </div>
           <button
             onClick={() => onNavigateHole('next')}
             disabled={currentHole === holesPlayed - 1}
-            className="w-14 h-14 rounded-full bg-[#1a1a1a] text-white text-xl font-bold flex items-center justify-center disabled:opacity-40 active:bg-[#2a2a2a] touch-manipulation"
+            className="w-14 h-14 rounded-xl bg-surface-2 border border-line-default text-ink-primary text-xl font-bold
+                       flex items-center justify-center disabled:opacity-30 active:bg-surface-3 touch-manipulation"
           >
             ›
           </button>
         </div>
       </div>
 
-      {/* Fix 3: Player Navigation — swipe ←/→; pan-y prevents vertical page scroll */}
+      {/* Player Navigation */}
       <div
-        className="px-6 py-2 shrink-0"
+        className="px-4 py-2 shrink-0"
         style={{ touchAction: 'pan-y' }}
         onTouchStart={handlePlayerTouchStart}
         onTouchEnd={handlePlayerTouchEnd}
       >
-        <div className="flex items-center justify-between bg-[#1a1a1a] rounded-2xl px-4 py-3">
+        <div className="flex items-center justify-between bg-surface-2 border border-line-subtle rounded-2xl px-4 py-3">
           <button
-            onClick={() => onNavigatePlayer('prev')}
-            className="w-12 h-12 rounded-full bg-[#2a2a2a] text-white text-lg font-bold flex items-center justify-center active:bg-[#3a3a3a] touch-manipulation"
+            onClick={() => navigatePlayer('prev')}
+            className="w-12 h-12 rounded-xl bg-surface-3 border border-line-default text-ink-primary text-lg font-bold
+                       flex items-center justify-center active:bg-surface-4 touch-manipulation"
           >
             ‹
           </button>
-          <div className="text-center flex-1 px-2 min-w-0">
-            <p className="text-gray-400 text-xs uppercase tracking-widest mb-0.5">Player</p>
-            <p className="text-white text-2xl font-bold truncate">{currentPlayer.name}</p>
-            <p className="text-gray-400 text-xs mt-0.5 tabular-nums">
+          <div className="text-center flex-1 px-2 min-w-0 overflow-hidden">
+            <p className="label-caps mb-0.5">Player</p>
+            <div
+              key={playerKey}
+              className={playerDir === 'left' ? 'animate-slide-left' : playerDir === 'right' ? 'animate-slide-right' : ''}
+            >
+              <p className="text-ink-primary text-2xl font-bold tracking-tight truncate">{currentPlayer.name}</p>
+            </div>
+            <p className="text-ink-tertiary text-xs mt-0.5 tabular-nums">
               {currentPlayerIndex + 1} / {players.length}
-              <span className="text-gray-600 mx-1">·</span>
-              total <span className="text-gray-300">{getTotal(currentPlayer.scores)}</span>
+              <span className="text-ink-muted mx-1">·</span>
+              total <span className="text-ink-secondary">{getTotal(currentPlayer.scores)}</span>
             </p>
           </div>
           <button
-            onClick={() => onNavigatePlayer('next')}
-            className="w-12 h-12 rounded-full bg-[#2a2a2a] text-white text-lg font-bold flex items-center justify-center active:bg-[#3a3a3a] touch-manipulation"
+            onClick={() => navigatePlayer('next')}
+            className="w-12 h-12 rounded-xl bg-surface-3 border border-line-default text-ink-primary text-lg font-bold
+                       flex items-center justify-center active:bg-surface-4 touch-manipulation"
           >
             ›
           </button>
@@ -352,26 +373,27 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       {/* Score section */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 gap-5">
 
-        {/* Fix 1+2: Score circle — always-in-DOM hidden input + touch-action:none */}
+        {/* Score circle — always-in-DOM hidden input */}
         <div
-          className={`w-44 h-44 rounded-full border-4 relative flex items-center justify-center transition-all duration-200 cursor-pointer select-none ${
+          className={`w-44 h-44 rounded-full relative flex items-center justify-center
+                      transition-all duration-200 cursor-pointer select-none ring-2 ring-inset ring-white/5 ${
             scoreFlash
-              ? 'border-green-500 bg-green-500/10 scale-105'
+              ? 'border-2 border-success bg-success/10 scale-105 animate-flash-ring'
               : isEditing
-              ? 'border-blue-400 bg-blue-500/10'
-              : 'border-red-500 bg-[#1a1a1a]'
+              ? 'border-2 border-accent/60 bg-surface-3 animate-pulse-ring'
+              : 'border border-line-default'
           }`}
-          style={{ touchAction: 'none' }}   // Fix 2: browser can't scroll from here
+          style={{
+            touchAction: 'none',
+            background: scoreFlash || isEditing
+              ? undefined
+              : 'radial-gradient(circle at center, #232326, #18181b)',
+          }}
           onTouchStart={handleScoreTouchStart}
           onTouchEnd={handleScoreTouchEnd}
           onClick={handleScoreCircleClick}
         >
-          {/*
-            Fix 1: input always mounted so iOS can focus() synchronously.
-            Fix 10: autocorrect/autocapitalize off — prevents suggestions bar.
-            font-size ≥16px — prevents iOS zoom on focus.
-            opacity:0 + pointerEvents:none — invisible but focusable.
-          */}
+          {/* Hidden always-in-DOM input — iOS requires element to exist for sync focus */}
           <input
             ref={inputRef}
             type="text"
@@ -394,28 +416,27 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
             }}
           />
 
-          {/* Fix 12: colour changes — white → blue while editing, green on flash */}
           <span
             className={`font-bold tabular-nums select-none ${scoreDigits} ${
-              scoreFlash ? 'text-green-400' : isEditing ? 'text-blue-400' : 'text-white'
+              scoreFlash ? 'text-success' : isEditing ? 'text-accent' : 'text-ink-primary'
             }`}
           >
             {visibleScore}
           </span>
         </div>
 
-        {/* Fix 5/12: +/− sign-flip shown while editing; hint text otherwise */}
+        {/* +/− sign-flip shown while editing; hint text otherwise */}
         <div className="flex items-center justify-center h-8">
           {isEditing ? (
             <button
-              // onPointerDown + preventDefault keeps input focused (no blur on tap)
               onPointerDown={(e) => { e.preventDefault(); flipSign(); }}
-              className="px-5 py-1.5 rounded-full bg-[#2a2a2a] text-gray-200 text-sm font-semibold active:bg-[#3a3a3a] touch-manipulation"
+              className="px-5 py-1.5 rounded-full bg-surface-3 border border-line-default
+                         text-ink-secondary text-sm font-semibold active:bg-surface-4 touch-manipulation"
             >
               +/− flip sign
             </button>
           ) : (
-            <p className="text-gray-700 text-xs select-none">
+            <p className="text-ink-muted text-xs select-none">
               tap · swipe ↕ · hold +/−
             </p>
           )}
@@ -429,7 +450,9 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
             onPointerLeave={stopHold}
             onPointerCancel={stopHold}
             onClick={() => handleButtonClick(-1)}
-            className="w-20 h-20 rounded-full bg-[#2a2a2a] text-white text-3xl font-bold flex items-center justify-center active:bg-[#3a3a3a] select-none touch-manipulation"
+            className="w-20 h-20 rounded-xl bg-surface-3 border border-line-default text-ink-primary text-3xl font-bold
+                       flex items-center justify-center active:bg-surface-4 active:scale-[0.95]
+                       select-none touch-manipulation transition-transform"
           >
             −
           </button>
@@ -439,7 +462,9 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
             onPointerLeave={stopHold}
             onPointerCancel={stopHold}
             onClick={() => handleButtonClick(1)}
-            className="w-20 h-20 rounded-full bg-red-500 text-white text-3xl font-bold flex items-center justify-center active:bg-red-600 select-none touch-manipulation"
+            className="w-20 h-20 rounded-xl bg-accent text-white text-3xl font-bold
+                       flex items-center justify-center active:bg-red-600 active:scale-[0.95]
+                       select-none touch-manipulation transition-transform"
           >
             +
           </button>
@@ -447,27 +472,28 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       </div>
 
       {/* Set Score */}
-      <div className="px-6 pb-4 shrink-0">
+      <div className="px-4 pb-4 shrink-0">
         <button
           onClick={handleSetScore}
-          className="w-full py-5 bg-red-500 text-white font-bold text-xl rounded-2xl active:bg-red-600 transition-colors select-none touch-manipulation"
+          className="w-full py-5 bg-accent text-white font-semibold text-xl rounded-xl
+                     active:bg-red-600 active:scale-[0.98] transition-all select-none touch-manipulation"
         >
           Set Score
         </button>
       </div>
 
       {/* Mini hole snapshot */}
-      <div className="px-6 pb-6 shrink-0">
-        <div className="border border-[#2a2a2a] rounded-xl p-3">
-          <p className="text-gray-400 text-xs mb-2 uppercase tracking-widest">Hole {currentHole + 1}</p>
+      <div className="px-4 pb-6 shrink-0">
+        <div className="card p-3">
+          <p className="label-caps mb-2">Hole {currentHole + 1}</p>
           <div className="flex gap-2 flex-wrap">
             {players.map((p, i) => (
               <div
                 key={i}
                 className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs tabular-nums ${
                   i === currentPlayerIndex
-                    ? 'bg-red-500/20 text-red-400 font-semibold'
-                    : 'text-gray-500'
+                    ? 'bg-accent-muted text-accent font-semibold'
+                    : 'text-ink-tertiary'
                 }`}
               >
                 <span>{p.name}:</span>

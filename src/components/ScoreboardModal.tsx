@@ -7,10 +7,17 @@ interface Props {
   onClose: () => void;
 }
 
+function CloseIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+      <line x1="1" y1="1" x2="9" y2="9" /><line x1="9" y1="1" x2="1" y2="9" />
+    </svg>
+  );
+}
+
 export default function ScoreboardModal({ game, displayScore, onClose }: Props) {
   const { players, holesPlayed, currentHole, currentPlayerIndex } = game;
 
-  // Build live scores — substitute the current editing value for the active cell
   const liveScores = players.map((p, origIndex) => {
     const scores = p.scores.map((s, hIdx) =>
       origIndex === currentPlayerIndex && hIdx === currentHole ? displayScore : s
@@ -21,48 +28,49 @@ export default function ScoreboardModal({ game, displayScore, onClose }: Props) 
   const standings = [...liveScores].sort((a, b) => a.total - b.total);
 
   return (
-    <div className="fixed inset-0 bg-[#0a0a0a]/97 z-50 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-surface-0/95 backdrop-blur-sm z-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="px-6 pt-10 pb-3 flex items-center justify-between shrink-0">
-        <h2 className="text-white text-2xl font-bold">
-          Live <span className="text-red-500">Board</span>
+      <div className="px-4 pt-10 pb-3 flex items-center justify-between shrink-0">
+        <h2 className="text-ink-primary text-2xl font-bold tracking-tight">
+          Live <span className="text-accent">Board</span>
         </h2>
         <button
           onClick={onClose}
-          className="w-10 h-10 rounded-full bg-[#2a2a2a] text-gray-300 text-lg flex items-center justify-center active:bg-[#3a3a3a]"
+          className="w-10 h-10 rounded-xl bg-surface-3 border border-line-default text-ink-secondary
+                     flex items-center justify-center active:bg-surface-4 touch-manipulation"
         >
-          ✕
+          <CloseIcon />
         </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-4">
-        {/* Standings */}
-        <div className="border-2 border-red-500 rounded-2xl p-4 bg-[#1a1a1a]">
-          <p className="text-gray-500 text-xs uppercase tracking-widest mb-3">Current Standings</p>
+        {/* Standings — featured card */}
+        <div className="card-featured p-4">
+          <p className="label-caps mb-3">Current Standings</p>
           {standings.map((p, rank) => (
             <div
               key={p.name}
-              className={`flex items-center gap-3 py-2.5 ${rank < standings.length - 1 ? 'border-b border-[#2a2a2a]' : ''}`}
+              className={`flex items-center gap-3 py-2.5 ${rank < standings.length - 1 ? 'border-b border-line-subtle' : ''}`}
             >
               <span
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                  rank === 0 ? 'bg-red-500 text-white' : 'bg-[#2a2a2a] text-gray-400'
+                  rank === 0 ? 'bg-accent text-white' : 'bg-surface-4 text-ink-secondary'
                 }`}
               >
                 {rank + 1}
               </span>
               <span
                 className={`flex-1 font-semibold text-base ${
-                  p.origIndex === currentPlayerIndex ? 'text-red-400' : 'text-white'
+                  p.origIndex === currentPlayerIndex ? 'text-accent' : 'text-ink-primary'
                 }`}
               >
                 {p.name}
                 {p.origIndex === currentPlayerIndex && (
-                  <span className="text-xs text-red-500/70 ml-2">now</span>
+                  <span className="text-xs text-accent/60 ml-2">now</span>
                 )}
               </span>
               <span
-                className={`font-bold text-lg tabular-nums ${rank === 0 ? 'text-red-400' : 'text-gray-200'}`}
+                className={`font-bold text-lg tabular-nums ${rank === 0 ? 'text-accent' : 'text-ink-secondary'}`}
               >
                 {p.total}
               </span>
@@ -71,15 +79,15 @@ export default function ScoreboardModal({ game, displayScore, onClose }: Props) 
         </div>
 
         {/* Hole-by-hole table */}
-        <div className="border border-[#2a2a2a] rounded-2xl p-4 bg-[#1a1a1a]">
-          <p className="text-gray-500 text-xs uppercase tracking-widest mb-3">
+        <div className="card p-4">
+          <p className="label-caps mb-3">
             Hole by Hole — through hole {currentHole + 1}
           </p>
           <div className="overflow-x-auto -mx-1 px-1">
             <table className="text-xs w-full">
               <thead>
                 <tr>
-                  <th className="text-gray-500 font-medium text-left pb-2 pr-3 sticky left-0 bg-[#1a1a1a] min-w-[56px]">
+                  <th className="label-caps text-left pb-2 pr-3 sticky left-0 bg-surface-2 min-w-[56px]">
                     Player
                   </th>
                   {Array.from({ length: holesPlayed }, (_, i) => (
@@ -87,24 +95,24 @@ export default function ScoreboardModal({ game, displayScore, onClose }: Props) 
                       key={i}
                       className={`pb-2 px-1.5 text-center font-medium min-w-[26px] ${
                         i === currentHole
-                          ? 'text-red-500'
+                          ? 'text-accent'
                           : i < currentHole
-                          ? 'text-gray-400'
-                          : 'text-gray-700'
+                          ? 'text-ink-secondary'
+                          : 'text-ink-muted'
                       }`}
                     >
                       {i + 1}
                     </th>
                   ))}
-                  <th className="pb-2 pl-2 text-center text-gray-300 font-bold whitespace-nowrap">Tot</th>
+                  <th className="pb-2 pl-2 text-center text-ink-secondary font-bold whitespace-nowrap">Tot</th>
                 </tr>
               </thead>
               <tbody>
                 {liveScores.map((p) => (
                   <tr key={p.name}>
                     <td
-                      className={`pr-3 py-1.5 font-medium whitespace-nowrap sticky left-0 bg-[#1a1a1a] ${
-                        p.origIndex === currentPlayerIndex ? 'text-red-400' : 'text-gray-300'
+                      className={`pr-3 py-1.5 font-medium whitespace-nowrap sticky left-0 bg-surface-2 ${
+                        p.origIndex === currentPlayerIndex ? 'text-accent' : 'text-ink-secondary'
                       }`}
                     >
                       {p.name}
@@ -118,14 +126,14 @@ export default function ScoreboardModal({ game, displayScore, onClose }: Props) 
                           key={hIdx}
                           className={`text-center py-1.5 px-1.5 tabular-nums ${
                             isActiveCell
-                              ? 'bg-red-500/20 text-red-400 font-bold rounded'
+                              ? 'bg-accent-muted text-accent font-bold rounded'
                               : isFuture
-                              ? 'text-gray-700'
+                              ? 'text-ink-muted'
                               : s < 0
-                              ? 'text-green-400 font-bold'
+                              ? 'text-success font-bold'
                               : s >= 10
-                              ? 'text-red-400 font-bold'
-                              : 'text-gray-300'
+                              ? 'text-accent font-bold'
+                              : 'text-ink-secondary'
                           }`}
                         >
                           {isFuture ? '—' : s}
@@ -134,7 +142,7 @@ export default function ScoreboardModal({ game, displayScore, onClose }: Props) 
                     })}
                     <td
                       className={`text-center py-1.5 pl-2 font-bold tabular-nums ${
-                        p.origIndex === currentPlayerIndex ? 'text-red-400' : 'text-white'
+                        p.origIndex === currentPlayerIndex ? 'text-accent' : 'text-ink-primary'
                       }`}
                     >
                       {p.total}
@@ -150,7 +158,8 @@ export default function ScoreboardModal({ game, displayScore, onClose }: Props) 
       <div className="px-4 pb-10 shrink-0">
         <button
           onClick={onClose}
-          className="w-full py-4 bg-red-500 text-white font-bold text-lg rounded-2xl active:bg-red-600"
+          className="w-full py-4 bg-accent text-white font-semibold text-lg rounded-xl
+                     active:bg-red-600 active:scale-[0.98] transition-all touch-manipulation"
         >
           Back to Game
         </button>

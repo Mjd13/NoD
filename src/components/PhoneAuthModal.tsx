@@ -11,6 +11,7 @@ interface Props {
   onSendCode: (phone: string, verifier: RecaptchaVerifier) => void;
   onVerifyCode: (code: string) => void;
   onSaveName: (name: string) => void;
+  onSkip: () => void;
   phoneNumber?: string;
 }
 
@@ -167,7 +168,7 @@ function NameStep({ busy, onSave, phoneNumber }: {
   );
 }
 
-export default function PhoneAuthModal({ stage, codeSent, busy, error, onSendCode, onVerifyCode, onSaveName, phoneNumber }: Props) {
+export default function PhoneAuthModal({ stage, codeSent, busy, error, onSendCode, onVerifyCode, onSaveName, onSkip, phoneNumber }: Props) {
   const [localStage, setLocalStage] = useState<'phone' | 'otp' | 'name'>(
     stage === 'no-name' ? 'name' : 'phone'
   );
@@ -245,6 +246,15 @@ export default function PhoneAuthModal({ stage, codeSent, busy, error, onSendCod
             />
           )}
         </div>
+
+        {localStage === 'phone' && (
+          <button
+            onClick={onSkip}
+            className="mt-4 w-full text-ink-muted text-sm text-center py-2 active:text-ink-secondary"
+          >
+            Skip — continue without account
+          </button>
+        )}
       </div>
     </div>
   );

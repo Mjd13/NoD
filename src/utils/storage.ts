@@ -3,6 +3,7 @@ import { Game, GameSetupData } from '../types';
 const GAMES_KEY = 'scorecards_games';
 const LAST_SETUP_KEY = 'scorecards_lastSetup';
 const DISPLAY_NAME_KEY = 'scorecards_display_name';
+const AUTH_SKIPPED_KEY = 'scorecards_auth_skipped';
 
 export function loadGames(): Game[] {
   try {
@@ -44,4 +45,12 @@ export function loadDisplayName(): string | null {
 
 export function saveDisplayName(name: string): void {
   localStorage.setItem(DISPLAY_NAME_KEY, name);
+}
+
+export function loadAuthSkipped(): boolean {
+  return localStorage.getItem(AUTH_SKIPPED_KEY) === '1';
+}
+
+export function saveAuthSkipped(): void {
+  localStorage.setItem(AUTH_SKIPPED_KEY, '1');
 }

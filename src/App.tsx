@@ -25,7 +25,7 @@ export default function App() {
   );
   const { activeGame, startGame, setScoreAndAdvance, navigateHole, navigatePlayer, resetGame } = useGameState();
   const { games, addGame, deleteGame } = useHistory();
-  const { uid, displayName, stage, codeSent, busy, authError, sendCode, verifyCode, saveName, needsOnboarding } = useAuth();
+  const { uid, displayName, stage, codeSent, busy, authError, sendCode, verifyCode, saveName, skipAuth, skippedAuth, needsOnboarding } = useAuth();
   const { showPrompt: showInstall, canNativeInstall, triggerInstall, dismiss: dismissInstall } = useInstallPrompt();
 
   const handleSplashDone = () => {
@@ -89,7 +89,7 @@ export default function App() {
   };
 
   const showNav = ['setup', 'history', 'analytics', 'global'].includes(screen);
-  const showOnboarding = !showSplash && !showInstall && stage !== 'loading' && needsOnboarding;
+  const showOnboarding = !showSplash && !showInstall && stage !== 'loading' && needsOnboarding && !skippedAuth;
 
   return (
     <div className="min-h-screen bg-surface-0 text-ink-primary">
@@ -110,6 +110,7 @@ export default function App() {
           onSendCode={sendCode}
           onVerifyCode={verifyCode}
           onSaveName={saveName}
+          onSkip={skipAuth}
         />
       )}
 

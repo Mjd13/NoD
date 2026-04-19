@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, firebaseEnabled } from '../lib/firebase';
-import { loadDisplayName, saveDisplayName } from '../utils/storage';
+import { loadDisplayName, saveDisplayName, loadAuthSkipped, saveAuthSkipped } from '../utils/storage';
 
 export type AuthStage = 'loading' | 'unauthenticated' | 'no-name' | 'done';
 
@@ -32,6 +32,7 @@ export function useAuth() {
   const [codeSent, setCodeSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [skippedAuth, setSkippedAuth] = useState(() => loadAuthSkipped());
 
   useEffect(() => {
     if (!firebaseEnabled || !auth) {
@@ -96,6 +97,11 @@ export function useAuth() {
     }
   }, [confirmation]);
 
+  const skipAuth = useCallback(() => {
+    saveAuthSkipped();
+    setSkippedAuth(true);
+  }, []);
+
   const saveName = useCallback(async (name: string) => {
     if (!user || !db) return;
     const trimmed = name.trim();
@@ -128,6 +134,8 @@ export function useAuth() {
     sendCode,
     verifyCode,
     saveName,
+    skipAuth,
+    skippedAuth,
     needsOnboarding: stage === 'unauthenticated' || stage === 'no-name',
   };
 }

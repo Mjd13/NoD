@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   collection,
-  query,
-  orderBy,
-  limit,
   getDocs,
   doc,
   setDoc,
@@ -22,16 +19,13 @@ export function useGlobalLeaderboard() {
     setLoading(true);
     setError(null);
     try {
-      const q = query(
-        collection(db, 'leaderboard'),
-        orderBy('wins', 'desc'),
-        orderBy('avgScore', 'asc'),
-        limit(50)
-      );
-      const snap = await getDocs(q);
-      setEntries(snap.docs.map(d => d.data() as GlobalEntry));
+      const snap = await getDocs(collection(db, 'leaderboard'));
+      const raw = snap.docs.map(d => d.data() as GlobalEntry);
+      // Sort client-side to avoid requiring a Firestore composite index
+      raw.sort((a, b) => b.wins - a.wins || a.avgScore - b.avgScore);
+      setEntries(raw);
     } catch {
-      setError('Could not load leaderboard.');
+      setError('Could not load leaderboard. Check your connection.');
     }
     setLoading(false);
   }, []);
@@ -50,6 +44,11 @@ export async function syncGameToFirebase(result: GameResult): Promise<void> {
   });
 
   const lbRef = doc(db, 'leaderboard', result.uid);
+  const scores = result.scores ?? [];
+  const nonZeroScores = scores.filter(s => s > 0);
+  const gameHigh = nonZeroScores.length ? Math.max(...scores) : null;
+  const gameLow = nonZeroScores.length ? Math.min(...nonZeroScores) : null;
+
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(lbRef);
     if (!snap.exists()) {
@@ -60,6 +59,8 @@ export async function syncGameToFirebase(result: GameResult): Promise<void> {
         wins: result.won ? 1 : 0,
         bestScore: result.totalScore,
         avgScore: result.totalScore,
+        bestHole: gameLow ?? null,
+        worstHole: gameHigh ?? null,
         lastUpdated: serverTimestamp(),
       });
     } else {
@@ -68,7 +69,21 @@ export async function syncGameToFirebase(result: GameResult): Promise<void> {
       const wins = d.wins + (result.won ? 1 : 0);
       const bestScore = Math.min(d.bestScore, result.totalScore);
       const avgScore = Math.round((d.avgScore * d.gamesPlayed + result.totalScore) / gamesPlayed);
-      tx.update(lbRef, { gamesPlayed, wins, bestScore, avgScore, lastUpdated: serverTimestamp() });
+      const bestHole = gameLow !== null
+        ? (d.bestHole != null ? Math.min(d.bestHole, gameLow) : gameLow)
+        : d.bestHole ?? null;
+      const worstHole = gameHigh !== null
+        ? (d.worstHole != null ? Math.max(d.worstHole, gameHigh) : gameHigh)
+        : d.worstHole ?? null;
+      tx.update(lbRef, {
+        gamesPlayed,
+        wins,
+        bestScore,
+        avgScore,
+        bestHole,
+        worstHole,
+        lastUpdated: serverTimestamp(),
+      });
     }
   });
 }

@@ -33,6 +33,8 @@ export interface GlobalEntry {
   wins: number;
   bestScore: number;
   avgScore: number;
+  bestHole?: number;
+  worstHole?: number;
 }
 
 export interface GameResult {
@@ -43,4 +45,5 @@ export interface GameResult {
   playerCount: number;
   totalScore: number;
   won: boolean;
+  scores?: number[];
 }

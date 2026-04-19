@@ -76,6 +76,7 @@ export default function App() {
         playerCount: activeGame.players.length,
         totalScore,
         won,
+        scores: ownerPlayer?.scores ?? [],
       });
     }
 
@@ -140,7 +141,7 @@ export default function App() {
         )}
 
         {screen === 'global' && (
-          <GlobalLeaderboard displayName={displayName} />
+          <GlobalLeaderboard displayName={displayName} skippedAuth={skippedAuth} />
         )}
       </div>
 

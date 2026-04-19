@@ -39,7 +39,7 @@ export default function GlobalLeaderboard({ displayName }: Props) {
   if (!firebaseEnabled) {
     return (
       <div className="min-h-screen bg-surface-0 pb-24">
-        <div className="px-4 pt-12 pb-6">
+        <div className="px-4 pt-safe pb-6">
           <h1 className="text-4xl font-black text-ink-primary tracking-tight">Global</h1>
           <p className="text-ink-tertiary text-sm mt-1">Worldwide leaderboard</p>
         </div>
@@ -68,7 +68,7 @@ export default function GlobalLeaderboard({ displayName }: Props) {
 
   return (
     <div className="min-h-screen bg-surface-0 pb-24">
-      <div className="px-4 pt-12 pb-6 flex items-start justify-between">
+      <div className="px-4 pt-safe pb-6 flex items-start justify-between">
         <div>
           <h1 className="text-4xl font-black text-ink-primary tracking-tight">Global</h1>
           <p className="text-ink-tertiary text-sm mt-1">

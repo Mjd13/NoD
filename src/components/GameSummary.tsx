@@ -41,7 +41,7 @@ export default function GameSummary({ game, onSave, onNewGame }: Props) {
   return (
     <div className="min-h-screen bg-surface-0 flex flex-col">
       {/* Header */}
-      <div className="px-4 pt-12 pb-6">
+      <div className="px-4 pt-safe pb-6">
         <h1 className="text-4xl font-black text-ink-primary tracking-tight">Summary</h1>
         <p className="text-ink-tertiary text-sm mt-1">{holesPlayed} holes · {players.length} players</p>
       </div>
@@ -150,7 +150,7 @@ export default function GameSummary({ game, onSave, onNewGame }: Props) {
       </div>
 
       {/* Actions */}
-      <div className="px-4 mt-auto pb-10 flex flex-col gap-3">
+      <div className="px-4 mt-auto pb-safe flex flex-col gap-3">
         <button
           onClick={onSave}
           className="w-full py-4 text-white font-semibold text-lg rounded-xl

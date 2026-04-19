@@ -43,8 +43,8 @@ export default function SplashScreen({ onDone }: Props) {
 
       {/* Skip hint */}
       <p
-        className="absolute bottom-16 label-caps opacity-0"
-        style={{ animation: 'wordmark-in 0.3s ease-out 1.1s forwards' }}
+        className="absolute label-caps opacity-0"
+        style={{ bottom: 'max(4rem, calc(env(safe-area-inset-bottom) + 1.5rem))', animation: 'wordmark-in 0.3s ease-out 1.1s forwards' }}
       >
         tap to continue
       </p>

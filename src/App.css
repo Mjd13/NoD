@@ -73,3 +73,12 @@ input {
 .screen-enter {
   animation: screen-enter 0.2s ease-out;
 }
+
+/* Safe area padding — accounts for Dynamic Island, notch, and home indicator */
+.pt-safe {
+  padding-top: max(3rem, calc(env(safe-area-inset-top) + 0.5rem));
+}
+
+.pb-safe {
+  padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+}

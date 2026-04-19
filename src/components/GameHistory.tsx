@@ -49,7 +49,7 @@ export default function GameHistory({ games, onDeleteGame }: Props) {
   return (
     <div className="min-h-screen bg-surface-0 pb-24">
       {/* Header */}
-      <div className="px-4 pt-12 pb-6">
+      <div className="px-4 pt-safe pb-6">
         <h1 className="text-4xl font-black text-ink-primary tracking-tight">History</h1>
         <p className="text-ink-tertiary text-sm mt-1">
           {games.length} game{games.length !== 1 ? 's' : ''} saved

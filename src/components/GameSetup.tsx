@@ -215,7 +215,7 @@ export default function GameSetup({ onStartGame }: Props) {
 
   return (
     <div className="min-h-screen bg-surface-0 flex flex-col pb-24">
-      <div className="px-4 pt-12 pb-6">
+      <div className="px-4 pt-safe pb-6">
         <h1 className="text-4xl font-black text-ink-primary tracking-tight">
           Scorecards<sup className="text-accent text-lg font-bold ml-0.5 align-super">PRO</sup>
         </h1>
@@ -278,9 +278,6 @@ export default function GameSetup({ onStartGame }: Props) {
         <div className="card p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-ink-primary font-semibold text-lg tracking-tight">Players</h2>
-            {firebaseEnabled && (
-              <p className="text-ink-muted text-xs">Tap <SearchIcon /> to find by phone</p>
-            )}
           </div>
           <div className="flex flex-col gap-4">
             {players.map((entry, i) => (

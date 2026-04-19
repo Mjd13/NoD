@@ -269,7 +269,7 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       style={{ overflowY: 'auto', overscrollBehavior: 'none' }}
     >
       {/* Header */}
-      <div className="px-4 pt-10 pb-4 flex items-center justify-between shrink-0">
+      <div className="px-4 pt-safe pb-4 flex items-center justify-between shrink-0">
         <button
           onClick={() => setShowConfirm(true)}
           className="text-ink-secondary text-sm font-medium active:opacity-60 touch-manipulation"
@@ -472,7 +472,7 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       </div>
 
       {/* Set Score */}
-      <div className="px-4 pb-4 shrink-0">
+      <div className="px-4 pb-2 shrink-0">
         <button
           onClick={handleSetScore}
           className="w-full py-5 bg-accent text-white font-semibold text-xl rounded-xl
@@ -483,7 +483,7 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       </div>
 
       {/* Mini hole snapshot */}
-      <div className="px-4 pb-6 shrink-0">
+      <div className="px-4 pb-safe shrink-0">
         <div className="card p-3">
           <p className="label-caps mb-2">Hole {currentHole + 1}</p>
           <div className="flex gap-2 flex-wrap">

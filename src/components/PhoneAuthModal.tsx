@@ -60,7 +60,6 @@ function PhoneStep({ busy, error, onSend }: {
         <p className="text-ink-muted text-xs mt-2">US &amp; Canada numbers only</p>
       </div>
       {error && <p className="text-red-400 text-sm">{error}</p>}
-      <div id="recaptcha-container" />
       <button
         type="submit"
         disabled={busy || digits.length !== 10}
@@ -201,6 +200,7 @@ export default function PhoneAuthModal({ stage, codeSent, busy, error, onSendCod
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-0/95 backdrop-blur-sm px-4">
+      <div id="recaptcha-container" />
       <div className="w-full max-w-sm">
         {/* Logo mark */}
         <div className="flex justify-center mb-8">

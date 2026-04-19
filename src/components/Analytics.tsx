@@ -53,7 +53,7 @@ export default function Analytics({ games }: Props) {
   return (
     <div className="min-h-screen bg-surface-0 pb-24">
       {/* Header */}
-      <div className="px-4 pt-12 pb-6">
+      <div className="px-4 pt-safe pb-6">
         <h1 className="text-4xl font-black text-ink-primary tracking-tight">Stats</h1>
         <p className="text-ink-tertiary text-sm mt-1">
           {completedCount} completed game{completedCount !== 1 ? 's' : ''} tracked

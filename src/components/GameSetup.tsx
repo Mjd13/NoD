@@ -10,6 +10,7 @@ interface PlayerEntry {
 
 interface Props {
   onStartGame: (players: PlayerEntry[], holes: 9 | 18) => void;
+  currentUser?: { name: string; uid: string } | null;
 }
 
 const MIN_PLAYERS = 2;
@@ -176,10 +177,15 @@ function PlayerSlot({ index, entry, onChange, error }: {
   );
 }
 
-export default function GameSetup({ onStartGame }: Props) {
+export default function GameSetup({ onStartGame, currentUser }: Props) {
   const [playerCount, setPlayerCount] = useState(2);
   const [holes, setHoles] = useState<9 | 18>(9);
-  const [players, setPlayers] = useState<PlayerEntry[]>([{ name: '' }, { name: '' }]);
+  const [players, setPlayers] = useState<PlayerEntry[]>(() => {
+    const p1: PlayerEntry = currentUser
+      ? { name: currentUser.name, uid: currentUser.uid }
+      : { name: '' };
+    return [p1, { name: '' }];
+  });
   const [errors, setErrors] = useState<string[]>([]);
   const lastSetup = loadLastSetup();
 
@@ -197,7 +203,10 @@ export default function GameSetup({ onStartGame }: Props) {
     if (!lastSetup) return;
     setPlayerCount(lastSetup.playerNames.length);
     setHoles(lastSetup.holes);
-    setPlayers(lastSetup.playerNames.map(name => ({ name })));
+    setPlayers(lastSetup.playerNames.map(name => ({
+      name,
+      uid: currentUser?.name.toLowerCase() === name.toLowerCase() ? currentUser.uid : undefined,
+    })));
   };
 
   const handleStart = () => {

@@ -56,28 +56,22 @@ export default function App() {
       completed: true,
     });
 
-    if (uid && displayName) {
-      const winnerName = getWinnerName({ ...activeGame, id, date: Date.now(), completed: true });
-      const ownerPlayer = activeGame.players.find(
-        (p) => p.name.toLowerCase() === displayName.toLowerCase()
-      );
-      const totalScore = ownerPlayer
-        ? getTotal(ownerPlayer.scores)
-        : getTotal(activeGame.players.reduce(
-            (best, p) => getTotal(p.scores) < getTotal(best.scores) ? p : best
-          ).scores);
-      const won = winnerName.toLowerCase() === displayName.toLowerCase();
+    const winnerName = getWinnerName({ ...activeGame, id, date: Date.now(), completed: true });
 
-      syncGameToFirebase({
-        id,
-        uid,
-        displayName,
-        holesPlayed: activeGame.holesPlayed,
-        playerCount: activeGame.players.length,
-        totalScore,
-        won,
-        scores: ownerPlayer?.scores ?? [],
-      });
+    // Sync every registered player (those with a uid) — guests are skipped
+    for (const player of activeGame.players) {
+      if (player.uid) {
+        syncGameToFirebase({
+          id: `${id}_${player.uid}`,
+          uid: player.uid,
+          displayName: player.name,
+          holesPlayed: activeGame.holesPlayed,
+          playerCount: activeGame.players.length,
+          totalScore: getTotal(player.scores),
+          won: player.name.toLowerCase() === winnerName.toLowerCase(),
+          scores: player.scores,
+        });
+      }
     }
 
     resetGame();
@@ -116,7 +110,12 @@ export default function App() {
       )}
 
       <div key={screen} className="screen-enter">
-        {screen === 'setup' && <GameSetup onStartGame={handleStartGame} />}
+        {screen === 'setup' && (
+          <GameSetup
+            onStartGame={handleStartGame}
+            currentUser={uid && displayName ? { name: displayName, uid } : null}
+          />
+        )}
 
         {screen === 'scorecard' && activeGame && (
           <Scorecard

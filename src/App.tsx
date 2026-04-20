@@ -16,7 +16,7 @@ import InstallPrompt from './components/InstallPrompt';
 import { syncGameToFirebase } from './hooks/useGlobalLeaderboard';
 import { Screen } from './types';
 import { generateId } from './utils/uuid';
-import { getTotal, getWinnerName } from './utils/calculations';
+import { getTotal, getWinnerName, getRecentPlayers } from './utils/calculations';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('setup');
@@ -114,6 +114,7 @@ export default function App() {
           <GameSetup
             onStartGame={handleStartGame}
             currentUser={uid && displayName ? { name: displayName, uid } : null}
+            recentPlayers={getRecentPlayers(games, uid)}
           />
         )}
 

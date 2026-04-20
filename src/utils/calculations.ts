@@ -1,5 +1,20 @@
 import { Game, LeaderboardEntry, Achievement } from '../types';
 
+export function getRecentPlayers(
+  games: Game[],
+  excludeUid?: string | null,
+): { name: string; uid: string }[] {
+  const seen = new Map<string, { name: string; uid: string; lastPlayed: number }>();
+  for (const game of [...games].sort((a, b) => b.date - a.date)) {
+    for (const player of game.players) {
+      if (player.uid && player.uid !== excludeUid && !seen.has(player.uid)) {
+        seen.set(player.uid, { name: player.name, uid: player.uid, lastPlayed: game.date });
+      }
+    }
+  }
+  return [...seen.values()].slice(0, 8).map(({ name, uid }) => ({ name, uid }));
+}
+
 export function getTotal(scores: number[]): number {
   return scores.reduce((sum, s) => sum + s, 0);
 }

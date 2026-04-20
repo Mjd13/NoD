@@ -11,6 +11,7 @@ interface PlayerEntry {
 interface Props {
   onStartGame: (players: PlayerEntry[], holes: 9 | 18, dealerIndex: number) => void;
   currentUser?: { name: string; uid: string } | null;
+  recentPlayers?: { name: string; uid: string }[];
 }
 
 const MIN_PLAYERS = 2;
@@ -41,15 +42,16 @@ function XIcon() {
   );
 }
 
-type SlotMode = 'guest' | 'searching' | 'found';
+type SlotMode = 'guest' | 'recent' | 'searching' | 'found';
 
-function PlayerSlot({ index, entry, onChange, error, isDealer, onSetDealer }: {
+function PlayerSlot({ index, entry, onChange, error, isDealer, onSetDealer, recentPlayers }: {
   index: number;
   entry: PlayerEntry;
   onChange: (entry: PlayerEntry) => void;
   error: string;
   isDealer: boolean;
   onSetDealer: () => void;
+  recentPlayers: { name: string; uid: string }[];
 }) {
   const [mode, setMode] = useState<SlotMode>(entry.uid ? 'found' : 'guest');
   const [phoneDigits, setPhoneDigits] = useState('');
@@ -104,6 +106,50 @@ function PlayerSlot({ index, entry, onChange, error, isDealer, onSetDealer }: {
         >
           <XIcon />
         </button>
+      </div>
+    );
+  }
+
+  if (mode === 'recent') {
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onSetDealer}
+            title="Set as first drawer"
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 touch-manipulation transition-colors ${
+              isDealer ? 'bg-accent text-white' : 'bg-surface-4 text-ink-secondary'
+            }`}
+          >
+            {isDealer ? <span className="text-sm leading-none">🃏</span> : <span className="text-xs font-bold">{index + 1}</span>}
+          </button>
+          <p className="text-ink-secondary text-sm font-medium flex-1">Recent players</p>
+          <button onClick={handleClearToGuest} className="text-ink-muted text-xs">Cancel</button>
+        </div>
+        <div className="ml-10 flex flex-col gap-1">
+          {recentPlayers.map(p => (
+            <button
+              key={p.uid}
+              onClick={() => { onChange({ name: p.name, uid: p.uid }); setMode('found'); }}
+              className="flex items-center gap-3 px-3 py-2.5 bg-surface-3 rounded-xl text-left
+                         active:bg-surface-4 touch-manipulation transition-colors"
+            >
+              <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center shrink-0">
+                <span className="text-accent text-xs font-bold">{p.name[0].toUpperCase()}</span>
+              </div>
+              <span className="flex-1 text-ink-primary text-sm font-medium truncate">{p.name}</span>
+              <span className="text-accent text-xs font-semibold shrink-0">Add</span>
+            </button>
+          ))}
+          <button
+            onClick={() => setMode('searching')}
+            className="flex items-center gap-2 px-3 py-2.5 text-ink-muted text-sm text-left
+                       active:text-ink-secondary touch-manipulation"
+          >
+            <SearchIcon />
+            Search by phone number
+          </button>
+        </div>
       </div>
     );
   }
@@ -186,8 +232,8 @@ function PlayerSlot({ index, entry, onChange, error, isDealer, onSetDealer }: {
       </div>
       {firebaseEnabled && (
         <button
-          onClick={() => setMode('searching')}
-          title="Find by phone number"
+          onClick={() => setMode(recentPlayers.length > 0 ? 'recent' : 'searching')}
+          title="Add registered player"
           className="w-9 h-9 rounded-xl bg-surface-3 border border-line-default flex items-center justify-center text-ink-muted active:bg-surface-4 touch-manipulation shrink-0"
         >
           <SearchIcon />
@@ -197,7 +243,7 @@ function PlayerSlot({ index, entry, onChange, error, isDealer, onSetDealer }: {
   );
 }
 
-export default function GameSetup({ onStartGame, currentUser }: Props) {
+export default function GameSetup({ onStartGame, currentUser, recentPlayers = [] }: Props) {
   const [playerCount, setPlayerCount] = useState(2);
   const [holes, setHoles] = useState<9 | 18>(9);
   const [players, setPlayers] = useState<PlayerEntry[]>(() => {
@@ -311,17 +357,21 @@ export default function GameSetup({ onStartGame, currentUser }: Props) {
             <p className="text-ink-muted text-xs">Tap 🃏 to set first draw</p>
           </div>
           <div className="flex flex-col gap-4">
-            {players.map((entry, i) => (
-              <PlayerSlot
-                key={i}
-                index={i}
-                entry={entry}
-                onChange={e => updatePlayer(i, e)}
-                error={errors[i] ?? ''}
-                isDealer={dealerIndex === i}
-                onSetDealer={() => setDealerIndex(i)}
-              />
-            ))}
+            {players.map((entry, i) => {
+              const usedUids = new Set(players.filter((_, j) => j !== i).map(p => p.uid).filter(Boolean));
+              return (
+                <PlayerSlot
+                  key={i}
+                  index={i}
+                  entry={entry}
+                  onChange={e => updatePlayer(i, e)}
+                  error={errors[i] ?? ''}
+                  isDealer={dealerIndex === i}
+                  onSetDealer={() => setDealerIndex(i)}
+                  recentPlayers={recentPlayers.filter(p => !usedUids.has(p.uid))}
+                />
+              );
+            })}
           </div>
         </div>
 

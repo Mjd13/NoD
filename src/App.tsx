@@ -33,8 +33,8 @@ export default function App() {
     setShowSplash(false);
   };
 
-  const handleStartGame = (players: { name: string; uid?: string }[], holes: 9 | 18) => {
-    startGame(players, holes);
+  const handleStartGame = (players: { name: string; uid?: string }[], holes: 9 | 18, dealerIndex: number) => {
+    startGame(players, holes, dealerIndex);
     setScreen('scorecard');
   };
 

@@ -9,7 +9,7 @@ interface PlayerEntry {
 }
 
 interface Props {
-  onStartGame: (players: PlayerEntry[], holes: 9 | 18) => void;
+  onStartGame: (players: PlayerEntry[], holes: 9 | 18, dealerIndex: number) => void;
   currentUser?: { name: string; uid: string } | null;
 }
 
@@ -43,11 +43,13 @@ function XIcon() {
 
 type SlotMode = 'guest' | 'searching' | 'found';
 
-function PlayerSlot({ index, entry, onChange, error }: {
+function PlayerSlot({ index, entry, onChange, error, isDealer, onSetDealer }: {
   index: number;
   entry: PlayerEntry;
   onChange: (entry: PlayerEntry) => void;
   error: string;
+  isDealer: boolean;
+  onSetDealer: () => void;
 }) {
   const [mode, setMode] = useState<SlotMode>(entry.uid ? 'found' : 'guest');
   const [phoneDigits, setPhoneDigits] = useState('');
@@ -83,9 +85,15 @@ function PlayerSlot({ index, entry, onChange, error }: {
   if (mode === 'found') {
     return (
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0">
-          <span className="text-white text-xs font-bold">{index + 1}</span>
-        </div>
+        <button
+          onClick={onSetDealer}
+          title="Set as first drawer"
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 touch-manipulation transition-colors ${
+            isDealer ? 'bg-accent text-white' : 'bg-surface-4 text-ink-secondary'
+          }`}
+        >
+          {isDealer ? <span className="text-sm leading-none">🃏</span> : <span className="text-xs font-bold">{index + 1}</span>}
+        </button>
         <div className="flex-1 bg-surface-3 border border-accent/40 rounded-xl px-3 py-2.5 flex items-center gap-2 min-w-0">
           <span className="text-ink-primary text-base flex-1 truncate">{entry.name}</span>
           <span className="label-caps text-accent shrink-0">verified</span>
@@ -104,9 +112,15 @@ function PlayerSlot({ index, entry, onChange, error }: {
     return (
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-surface-4 flex items-center justify-center shrink-0">
-            <span className="text-ink-secondary text-xs font-bold">{index + 1}</span>
-          </div>
+          <button
+            onClick={onSetDealer}
+            title="Set as first drawer"
+            className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 touch-manipulation transition-colors ${
+              isDealer ? 'bg-accent text-white' : 'bg-surface-4 text-ink-secondary'
+            }`}
+          >
+            {isDealer ? <span className="text-sm leading-none">🃏</span> : <span className="text-xs font-bold">{index + 1}</span>}
+          </button>
           <div className="flex items-center bg-surface-3 border border-line-default rounded-xl overflow-hidden focus-within:border-accent flex-1 transition-colors">
             <span className="px-3 py-2.5 text-ink-secondary text-sm border-r border-line-default shrink-0">+1</span>
             <input
@@ -149,9 +163,15 @@ function PlayerSlot({ index, entry, onChange, error }: {
   // Guest mode (default)
   return (
     <div className="flex items-center gap-3">
-      <div className="w-8 h-8 rounded-full bg-surface-4 flex items-center justify-center shrink-0">
-        <span className="text-ink-secondary text-xs font-bold">{index + 1}</span>
-      </div>
+      <button
+        onClick={onSetDealer}
+        title="Set as first drawer"
+        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 touch-manipulation transition-colors ${
+          isDealer ? 'bg-accent text-white' : 'bg-surface-4 text-ink-secondary'
+        }`}
+      >
+        {isDealer ? <span className="text-sm leading-none">🃏</span> : <span className="text-xs font-bold">{index + 1}</span>}
+      </button>
       <div className="flex-1">
         <input
           type="text"
@@ -186,6 +206,7 @@ export default function GameSetup({ onStartGame, currentUser }: Props) {
       : { name: '' };
     return [p1, { name: '' }];
   });
+  const [dealerIndex, setDealerIndex] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const lastSetup = loadLastSetup();
 
@@ -214,7 +235,7 @@ export default function GameSetup({ onStartGame, currentUser }: Props) {
     setErrors(errs);
     if (errs.some(e => e)) return;
     saveLastSetup({ playerNames: players.map(p => p.name.trim()), holes });
-    onStartGame(players.map(p => ({ ...p, name: p.name.trim() })), holes);
+    onStartGame(players.map(p => ({ ...p, name: p.name.trim() })), holes, dealerIndex);
   };
 
   const updatePlayer = (i: number, entry: PlayerEntry) => {
@@ -287,6 +308,7 @@ export default function GameSetup({ onStartGame, currentUser }: Props) {
         <div className="card p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-ink-primary font-semibold text-lg tracking-tight">Players</h2>
+            <p className="text-ink-muted text-xs">Tap 🃏 to set first draw</p>
           </div>
           <div className="flex flex-col gap-4">
             {players.map((entry, i) => (
@@ -296,6 +318,8 @@ export default function GameSetup({ onStartGame, currentUser }: Props) {
                 entry={entry}
                 onChange={e => updatePlayer(i, e)}
                 error={errors[i] ?? ''}
+                isDealer={dealerIndex === i}
+                onSetDealer={() => setDealerIndex(i)}
               />
             ))}
           </div>

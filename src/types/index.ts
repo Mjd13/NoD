@@ -22,6 +22,7 @@ export interface ActiveGame {
   holesPlayed: 9 | 18;
   currentHole: number;
   currentPlayerIndex: number;
+  startDealerIndex: number;
 }
 
 export interface LeaderboardEntry {

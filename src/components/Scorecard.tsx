@@ -258,6 +258,9 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
       onNavigateHole(dx > 0 ? 'next' : 'prev');
   };
 
+  const dealerIdx = (game.startDealerIndex + currentHole) % players.length;
+  const dealerName = players[dealerIdx].name;
+
   const absScore = Math.abs(displayScore);
   const scoreDigits = absScore >= 100 ? 'text-5xl' : 'text-6xl';
   const visibleScore = isEditing && inputValue === '-' ? '−' : String(displayScore);
@@ -318,6 +321,9 @@ export default function Scorecard({ game, onSetScore, onNavigateHole, onNavigate
             <p className="text-ink-primary text-3xl font-bold tabular-nums">
               {currentHole + 1}
               <span className="text-ink-muted text-xl">/{holesPlayed}</span>
+            </p>
+            <p className="text-ink-muted text-xs mt-1">
+              🃏 <span className="text-ink-secondary">{dealerName}</span> draws
             </p>
           </div>
           <button
